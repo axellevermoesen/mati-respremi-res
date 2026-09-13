@@ -1,0 +1,465 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   Matières Premières — Design system "Circuit Court"
+   Jetons (tokens) repris du dossier Claude Design : couleurs, typo, espacements,
+   ombres. On les expose de deux façons :
+   1. via @theme  -> génère les classes Tailwind (bg-green-700, font-display, ...)
+   2. via :root   -> variables CSS brutes réutilisables telles quelles dans les
+      maquettes exportées depuis Claude Design (--surface-page, --text-primary...)
+   ========================================================================== */
+
+@theme {
+  /* -- Palette de marque ------------------------------------------------- */
+  --color-green-900: #2d4839;
+  --color-green-700: #426e55;
+  --color-green-500: #73986f;
+  --color-rose-600: #cb748e;
+  --color-rose-300: #d698ab;
+  --color-rose-100: #eed4db;
+
+  --color-sand-50: #faf7f2;
+  --color-sand-100: #f3eee5;
+  --color-sand-200: #e6dfd2;
+  --color-sand-400: #b7ae9c;
+  --color-sand-600: #847a67;
+
+  --color-ink-900: #1e2420;
+  --color-ink-700: #3a4540;
+  --color-ink-500: #6b7570;
+
+  --color-amber-600: #c98a3e;
+  --color-terracotta-600: #b8503f;
+
+  /* -- Alias sémantiques (utilisables en classes Tailwind) ------------- */
+  --color-page: #faf7f2;
+  --color-card: #ffffff;
+  --color-sunken: #f3eee5;
+  --color-inverse: #2d4839;
+  --color-brand: #426e55;
+  --color-accent: #426e55;
+  --color-accent-hover: #2d4839;
+  --color-accent-secondary: #cb748e;
+  --color-accent-secondary-hover: #b15e77;
+  --color-line-subtle: #e6dfd2;
+  --color-line: #b7ae9c;
+  --color-success: #73986f;
+  --color-warning: #c98a3e;
+  --color-danger: #b8503f;
+
+  /* -- Typographie ---------------------------------------------------------- */
+  --font-display: "Space Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-body: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "Space Mono", ui-monospace, Menlo, monospace;
+
+  --text-display-xl: clamp(40px, 5vw, 72px);
+  --text-display-l: clamp(32px, 4vw, 52px);
+  --text-display-m: 28px;
+  --text-heading-l: 24px;
+  --text-heading-m: 20px;
+  --text-heading-s: 17px;
+  --text-body-l: 17px;
+  --text-body-m: 15px;
+  --text-body-s: 13px;
+  --text-caption: 12px;
+
+  /* -- Rayons -------------------------------------------------------------- */
+  --radius-s: 6px;
+  --radius-m: 10px;
+  --radius-l: 16px;
+  --radius-xl: 24px;
+  --radius-pill: 999px;
+
+  /* -- Ombres ------------------------------------------------------------- */
+  --shadow-s: 0 1px 2px hsl(45 30% 20% / 0.08);
+  --shadow-m: 0 4px 16px hsl(45 30% 20% / 0.1), 0 1px 3px hsl(45 30% 20% / 0.08);
+  --shadow-l: 0 16px 40px hsl(45 30% 20% / 0.14), 0 2px 8px hsl(45 30% 20% / 0.08);
+  --shadow-focus: 0 0 0 3px hsl(150 25% 33% / 0.25);
+
+  /* -- Largeur de conteneur -------------------------------------------- */
+  --container-max: 1200px;
+}
+
+/* ==========================================================================
+   Variables CSS brutes — noms identiques aux exports Claude Design
+   ========================================================================== */
+:root {
+  --green-900: #2d4839;
+  --green-700: #426e55;
+  --green-500: #73986f;
+  --rose-600: #cb748e;
+  --rose-300: #d698ab;
+  --rose-100: #eed4db;
+  --sand-50: #faf7f2;
+  --sand-100: #f3eee5;
+  --sand-200: #e6dfd2;
+  --sand-400: #b7ae9c;
+  --sand-600: #847a67;
+  --ink-900: #1e2420;
+  --ink-700: #3a4540;
+  --ink-500: #6b7570;
+  --amber-600: #c98a3e;
+  --terracotta-600: #b8503f;
+
+  --surface-page: var(--sand-50);
+  --surface-card: #ffffff;
+  --surface-sunken: var(--sand-100);
+  --surface-inverse: var(--green-900);
+
+  --text-primary: var(--ink-900);
+  --text-secondary: var(--ink-700);
+  --text-muted: var(--sand-600);
+  --text-inverse: var(--sand-50);
+  --text-brand: var(--green-700);
+
+  --border-subtle: var(--sand-200);
+  --border-default: var(--sand-400);
+  --border-focus: var(--green-700);
+
+  --accent-primary: var(--green-700);
+  --accent-primary-hover: var(--green-900);
+  --accent-secondary: var(--rose-600);
+  --accent-secondary-hover: #b15e77;
+  --accent-structural: var(--green-500);
+
+  --state-success: var(--green-500);
+  --state-warning: var(--amber-600);
+  --state-danger: var(--terracotta-600);
+
+  --leading-tight: 1.1;
+  --leading-snug: 1.3;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.06em;
+
+  --container-pad: 24px;
+
+  --shadow-color: 45 30% 20%;
+}
+
+/* ==========================================================================
+   Base  — dans @layer base pour que les classes Tailwind (text-white, etc.)
+   gardent la priorité sur ces règles d'éléments.
+   ========================================================================== */
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--surface-page);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: var(--text-body-m);
+    line-height: var(--leading-normal);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-tight);
+    color: var(--text-primary);
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  :focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+    border-radius: var(--radius-s);
+  }
+}
+
+/* Lien de navigation réutilisé dans l'en-tête et les sections */
+.mp-nav-link {
+  font-size: var(--text-body-m);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color 160ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.mp-nav-link:hover {
+  color: var(--text-brand);
+}
+
+/* ==========================================================================
+   « Ma page » — éditeur du profil producteur (repris de la maquette)
+   ========================================================================== */
+.mp-side-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 16px;
+  border-radius: var(--radius-s);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 120ms var(--ease-out, ease), color 120ms var(--ease-out, ease);
+}
+.mp-side-link:hover {
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+}
+.mp-side-link.active {
+  background: var(--green-900);
+  color: #fff;
+}
+.mp-side-link[aria-disabled="true"] {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.mp-card {
+  background: var(--surface-card);
+  border-radius: var(--radius-l);
+  box-shadow: var(--shadow-m);
+  padding: 24px 28px;
+}
+
+.mp-lab {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  display: block;
+  margin-bottom: 7px;
+}
+
+.mp-in {
+  width: 100%;
+  border: none;
+  border-radius: var(--radius-s);
+  padding: 11px 13px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-primary);
+  background: var(--surface-card);
+  box-shadow: inset 0 0 0 1px var(--border-default);
+}
+.mp-in:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--green-700);
+}
+textarea.mp-in {
+  resize: vertical;
+  line-height: var(--leading-relaxed);
+}
+
+.mp-add {
+  align-self: flex-start;
+  border: none;
+  background: transparent;
+  color: var(--green-900);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 9px 14px;
+  border-radius: var(--radius-s);
+  box-shadow: inset 0 0 0 1.5px var(--green-900);
+}
+.mp-add:hover {
+  background: var(--surface-sunken);
+}
+
+.mp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 8px 8px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.mp-chip button {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  padding: 0 4px;
+}
+.mp-chip button:hover {
+  color: var(--rose-600);
+}
+
+.mp-x {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: var(--radius-s);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  box-shadow: inset 0 0 0 1px var(--border-default);
+}
+.mp-x:hover {
+  color: var(--rose-600);
+  box-shadow: inset 0 0 0 1px var(--rose-300);
+}
+
+.mp-row {
+  display: grid;
+  gap: 10px;
+  align-items: center;
+  background: var(--surface-sunken);
+  border-radius: var(--radius-m);
+  padding: 12px;
+}
+
+/* Interrupteur d'audience (Revendeurs / Particuliers) */
+.mp-sw {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--text-muted);
+  border: none;
+  background: transparent;
+}
+.mp-sw .track {
+  width: 38px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 99px;
+  background: var(--sand-200);
+  position: relative;
+  box-shadow: inset 0 0 0 1px var(--border-default);
+  transition: background 120ms var(--ease-out, ease);
+}
+.mp-sw .knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: var(--shadow-s);
+  transition: transform 120ms var(--ease-out, ease);
+}
+.mp-sw.on-pro {
+  color: var(--green-900);
+}
+.mp-sw.on-pro .track {
+  background: var(--green-900);
+  box-shadow: none;
+}
+.mp-sw.on-pub {
+  color: var(--rose-600);
+}
+.mp-sw.on-pub .track {
+  background: var(--rose-600);
+  box-shadow: none;
+}
+.mp-sw.on-pro .knob,
+.mp-sw.on-pub .knob {
+  transform: translateX(16px);
+}
+.mp-sw.locked {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   Carte du réseau (/reseau) — habillage Leaflet + pins
+   ========================================================================== */
+.leaflet-container {
+  background: var(--sand-100);
+  font-family: var(--font-body);
+}
+.leaflet-tile-pane {
+  filter: saturate(0.4) sepia(0.12) brightness(1.05) contrast(0.95);
+}
+.leaflet-control-attribution {
+  background: hsl(45 30% 98% / 0.8) !important;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+.leaflet-bar a {
+  color: var(--green-900);
+  border-radius: var(--radius-s) !important;
+}
+.rez-pin {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  transition: transform 120ms var(--ease-out, ease);
+}
+.rez-pin:hover {
+  transform: scale(1.14);
+}
+.rez-dot {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--green-700);
+  border: 2.5px solid #fff;
+  box-shadow: 0 2px 6px hsl(var(--shadow-color, 150 12% 20%) / 0.3);
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 10px;
+}
+.rez-pin.is-sel .rez-dot {
+  background: var(--rose-600);
+  border-width: 3px;
+  box-shadow: 0 0 0 6px hsl(342 47% 63% / 0.22), 0 3px 8px hsl(150 12% 20% / 0.3);
+}
+.rez-pin.is-nb .rez-dot {
+  background: var(--green-900);
+}
+.rez-pin.is-dim {
+  opacity: 0.3;
+}
+.rez-lab {
+  display: none;
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--green-900);
+  background: hsl(45 30% 98% / 0.85);
+  padding: 1px 6px;
+  border-radius: var(--radius-s);
+  pointer-events: none;
+}
+.rez-pin:hover .rez-lab,
+.rez-pin.is-sel .rez-lab,
+.rez-pin.is-nb .rez-lab {
+  display: block;
+}

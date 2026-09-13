@@ -1,0 +1,479 @@
+// ============================================================================
+//  Matières Premières — schéma de données  (BROUILLON — à valider ensemble)
+//  Repris et étendu depuis le prototype "agriconnect".
+//  Ajouts : rôle revendeur, visibilité BtoC, minimum de commande / franco,
+//  paliers de prix, adresses multiples, paiement Stripe, tournées mutualisées.
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ----------------------------------------------------------------------------
+//  Utilisateurs & comptes
+// ----------------------------------------------------------------------------
+
+enum Role {
+  PRODUCER // producteur
+  RESTAURANT // restaurateur (acheteur)
+  RESELLER // revendeur / épicerie (acheteur)
+  ADMIN
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String?
+  name         String?
+  role         Role
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  producerProfile ProducerProfile?
+  buyerProfile    BuyerProfile?
+}
+
+// ----------------------------------------------------------------------------
+//  Profil producteur (vendeur + vitrine publique)
+// ----------------------------------------------------------------------------
+
+enum ProfileVisibility {
+  PUBLIC // visible de tous, y compris nouveaux clients
+  CLIENTS_ONLY // visible seulement des clients déjà acceptés
+  ON_REQUEST // les nouveaux clients doivent envoyer une demande d'accès
+}
+
+model ProducerProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  slug           String  @unique
+  farmName       String
+  tagline        String? // accroche, une phrase
+  description    String // "Mon histoire" (texte long)
+  practices      String // pratiques agricoles
+  values         String? // valeurs (liste séparée par virgules)
+  certifications String? // Bio, AOP, ... (liste séparée par virgules pour le MVP)
+  productionType String? // "Brasserie & houblonnière", ...
+  region         String
+  city           String?
+  address        String?
+  latitude       Float?
+  longitude      Float?
+  logoUrl        String?
+  coverUrl       String?
+  mediaUrls      Json? // rubrique "Photos & vidéos" : liste d'URL (max 5)
+  foundedYear    Int?
+
+  // Réglages "Ma page" : qui voit quelle rubrique
+  // { "histoire": {"pro": true, "pub": true}, "valeurs": {...}, ... }
+  sectionVisibility Json?
+
+  // Prix affichés sur la page publique (grand public) : "retail" (prix conseillés),
+  // "pro" (prix BtoB HT), "none" (aucun prix). La visibilité du catalogue lui-même
+  // reste pilotée par sectionVisibility.produits.pub.
+  publicPriceMode String @default("retail")
+
+  // Rubrique "Contact" de Ma page
+  // [{ "label": "Portable", "value": "06…", "pro": true, "pub": false }, ...]
+  contacts      Json?
+  mapAddress    String? // adresse affichée sur la carte
+  responseDelay String? // "24" | "48" | "72" | "hebdo"
+
+  // Rubrique "Acheter mes produits en direct"
+  directMarkets   Json? // [{ "nom": "...", "jour": "...", "lieu": "..." }]
+  farmShopHours   String? // jours et horaires d'ouverture
+  farmShopVisit   String? // visite / dégustation
+  farmShopAddress String? // adresse du point de vente
+
+  // Rubrique "Où trouver mes produits"
+  resellers            Json? // [{ "nom","type","ville","origine" }]
+  amaps                Json? // [{ "nom","detail","origine" }]
+  otherResellersMention Boolean @default(false)
+
+  // Rubrique "Ils utilisent mes produits"
+  clients Json? // [{ "nom","role","produit" }]
+
+  // Rubrique "Certifications & labels"
+  certifsList Json? // [{ "nom","annee","perso","lien" }]
+
+  // Rubrique "Informations sur l'exploitation"
+  legalForm        String? // EI | EARL | GAEC | SCEA | SARL | SAS | SCOP | ASSO
+  siret            String?
+  headcount        String? // effectif
+  capacity         String? // capacité de production (valeur)
+  capacityUnit     String? // "hL / an", "tonnes / an", ...
+  farmArea         String? // surface totale SAU (ha)
+  productionMode   String? // bio | conversion | raisonnee | biodynamie | conventionnel
+  onSiteProcessing String? // part transformée sur place (%)
+  seasonality      String? // annee | saison | creux
+  takeover         String? // reprise / installation
+  inventory        Json? // [{ "poste","quantite","precision" }]
+
+  // Rubrique "Mon réseau"
+  network Json? // [{ "nom","role","groupe": "partenaire" | "recommande" }]
+
+  // Rubrique "Mon activité BtoB" (3 réglages)
+  btobSettings Json? // { "visible": bool, "newRequests": bool, "manualConfirm": bool }
+
+  // Rubrique "Commande & logistique pro" (jamais visible côté public)
+  deliveryRadius  String? // rayon de livraison (km)
+  deliveryDays    String? // jours de tournée ("Mardi, Vendredi")
+  orderCutoffTime String? // heure limite de commande
+
+  // Règles commerciales (pense-bête)
+  minOrderValue   Decimal? @db.Decimal(10, 2) // minimum de commande
+  freeShippingFrom Decimal? @db.Decimal(10, 2) // "franco" : livraison offerte au-dessus de ce montant
+  leadTimeDays    Int      @default(2) // délai de préparation
+  orderCutoffDay  Int? // "commande avant jour X" (0 = lundi ... 6 = dimanche)
+
+  // Vitrine BtoC
+  visibility      ProfileVisibility @default(PUBLIC)
+  btoCEnabled     Boolean           @default(false) // page grand public activée
+  btoCStory       String? // texte long "grand public"
+  farmShopInfo    String? // vente à la ferme : horaires, adresse
+  markets         Market[] // marchés où le trouver
+  salePoints      SalePoint[] // points de vente / revendeurs partenaires
+
+  stripeAccountId String? // Stripe Connect
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products        Product[]
+  ordersReceived  Order[]
+  connectionsFrom ProducerConnection[] @relation("ConnectionFrom")
+  connectionsTo   ProducerConnection[] @relation("ConnectionTo")
+  clientAccess    ClientAccess[]
+  tourStops       DeliveryTourStop[]
+}
+
+model Market {
+  id         String          @id @default(cuid())
+  producerId String
+  producer   ProducerProfile @relation(fields: [producerId], references: [id], onDelete: Cascade)
+  name       String // "Marché de Wazemmes"
+  city       String
+  dayOfWeek  Int // 0..6
+  startTime  String? // "08:00"
+  endTime    String? // "13:00"
+}
+
+model SalePoint {
+  id         String          @id @default(cuid())
+  producerId String
+  producer   ProducerProfile @relation(fields: [producerId], references: [id], onDelete: Cascade)
+  name       String // "Épicerie Le Panier", "La Ruche qui dit Oui ..."
+  city       String
+  address    String?
+  kind       String? // épicerie, AMAP, restaurant, ...
+}
+
+// Accès d'un acheteur au catalogue d'un producteur (visibilité CLIENTS_ONLY / ON_REQUEST)
+enum AccessStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model ClientAccess {
+  id         String          @id @default(cuid())
+  producerId String
+  producer   ProducerProfile @relation(fields: [producerId], references: [id], onDelete: Cascade)
+  buyerId    String
+  buyer      BuyerProfile    @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  status     AccessStatus    @default(PENDING)
+  message    String?
+  createdAt  DateTime        @default(now())
+
+  @@unique([producerId, buyerId])
+}
+
+// ----------------------------------------------------------------------------
+//  Profil acheteur (restaurant OU revendeur)
+// ----------------------------------------------------------------------------
+
+model BuyerProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  companyName String
+  // Restaurant et épicerie = même type de compte "acheteur", traités à l'identique
+  // partout dans l'app. On garde juste l'info du type d'établissement (choisi à
+  // l'inscription) au cas où elle serve plus tard (stats, filtres producteur).
+  kind        Role @default(RESTAURANT) // RESTAURANT ou RESELLER
+  siret       String?
+  description String?
+  phone       String?
+
+  stripeCustomerId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  addresses    DeliveryAddress[]
+  orders       Order[]
+  clientAccess ClientAccess[]
+  cart         Cart?
+}
+
+// ----------------------------------------------------------------------------
+//  Panier (un par acheteur ; les CartItem sont regroupés par producteur au
+//  moment de la validation → une commande par producteur)
+// ----------------------------------------------------------------------------
+
+model Cart {
+  id        String       @id @default(cuid())
+  buyerId   String       @unique
+  buyer     BuyerProfile @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  updatedAt DateTime     @updatedAt
+  items     CartItem[]
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  cartId    String
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+
+  @@unique([cartId, productId])
+}
+
+model DeliveryAddress {
+  id        String       @id @default(cuid())
+  buyerId   String
+  buyer     BuyerProfile @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  label     String // "Cuisine", "Réserve", ...
+  line1     String
+  line2     String?
+  postcode  String
+  city      String
+  notes     String? // créneaux de réception, code d'accès...
+  isDefault Boolean      @default(false)
+
+  orders Order[]
+}
+
+// ----------------------------------------------------------------------------
+//  Catalogue
+// ----------------------------------------------------------------------------
+
+model Product {
+  id         String          @id @default(cuid())
+  producerId String
+  producer   ProducerProfile @relation(fields: [producerId], references: [id], onDelete: Cascade)
+
+  slug        String  @unique
+  name        String
+  detail      String? // origine, durée d'affinage, % — une ligne (vitrine)
+  formats     String? // "33 cl · 75 cl · fût 20 L"
+  description String?
+  category    String
+  unit        String // kg, pièce, botte, caisse...
+  basePrice   Decimal  @db.Decimal(10, 2) // prix pro (BtoB, HT) payé par les revendeurs
+  retailPrice Decimal? @db.Decimal(10, 2) // prix de vente conseillé grand public (BtoC), indicatif
+  vatRate     Decimal  @default(5.5) @db.Decimal(4, 2)
+
+  minQuantity Int  @default(1) // minimum de commande pour ce produit
+  stock       Decimal @db.Decimal(10, 2) @default(0) // stock global (si stockMode = "global")
+  stockUnit   String? // libellé du stock global : "bouteilles", "kg", "caisses"…
+  stockMode   String  @default("global") // "global" (un seul nombre) | "format" (par format de vente)
+  lowStockThreshold Decimal? @db.Decimal(10, 2)
+  trackStock  Boolean @default(true)
+
+  // Formats de vente : [{ id, label, size, sizeUnit, pricePro, priceRetail, unitPrice, stock }]
+  // "tout en formats" : au moins un format ; basePrice/retailPrice sont synchronisés sur le 1er.
+  salesFormats Json?
+
+  seasonality String?
+  certifications String?
+  photoUrl    String?
+  isActive    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  priceTiers PriceTier[]
+  orderItems OrderItem[]
+  cartItems  CartItem[]
+}
+
+// Paliers dégressifs : à partir de minQty, prix unitaire = unitPrice
+model PriceTier {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  minQty    Int
+  unitPrice Decimal @db.Decimal(10, 2)
+
+  @@unique([productId, minQty])
+}
+
+// ----------------------------------------------------------------------------
+//  Réseau de producteurs (recommandations + partenaires de livraison)
+// ----------------------------------------------------------------------------
+
+enum ConnectionType {
+  RECOMMENDATION // "je recommande ce producteur"
+  DELIVERY_PARTNER // "on mutualise la tournée"
+}
+
+model ProducerConnection {
+  id        String          @id @default(cuid())
+  fromId    String
+  from      ProducerProfile @relation("ConnectionFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  toId      String
+  to        ProducerProfile @relation("ConnectionTo", fields: [toId], references: [id], onDelete: Cascade)
+  type      ConnectionType
+  note      String?
+  createdAt DateTime        @default(now())
+
+  @@unique([fromId, toId, type])
+}
+
+// ----------------------------------------------------------------------------
+//  Commandes
+// ----------------------------------------------------------------------------
+
+enum OrderStatus {
+  DRAFT
+  PENDING // en attente de confirmation producteur
+  CONFIRMED
+  PREPARING
+  READY
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PROCESSING
+  PAID
+  REFUNDED
+  ON_INVOICE // paiement différé / sur facture
+}
+
+enum DeliveryMode {
+  DELIVERY // livré (éventuellement via tournée mutualisée)
+  PICKUP // retrait chez le producteur
+  PARTNER_PICKUP // retrait chez un confrère (point relais producteur)
+}
+
+// Une commande = un acheteur ↔ un producteur. Le "panier" multi-producteurs
+// du restaurant se traduit par plusieurs Order créées ensemble (même checkout).
+model Order {
+  id         String @id @default(cuid())
+  reference  String @unique // numéro lisible : MP-2026-000123
+
+  buyerId    String
+  buyer      BuyerProfile    @relation(fields: [buyerId], references: [id])
+  producerId String
+  producer   ProducerProfile @relation(fields: [producerId], references: [id])
+
+  status        OrderStatus   @default(PENDING)
+  paymentStatus PaymentStatus @default(UNPAID)
+
+  deliveryMode      DeliveryMode    @default(DELIVERY)
+  deliveryAddressId String?
+  deliveryAddress   DeliveryAddress? @relation(fields: [deliveryAddressId], references: [id])
+  requestedDate     DateTime?
+  deliveryFee       Decimal          @default(0) @db.Decimal(10, 2)
+
+  subtotal Decimal @db.Decimal(10, 2)
+  vatTotal Decimal @db.Decimal(10, 2)
+  total    Decimal @db.Decimal(10, 2)
+
+  stripePaymentIntentId String?
+  note                  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items     OrderItem[]
+  tourStopId String?
+  tourStop   DeliveryTourStop? @relation(fields: [tourStopId], references: [id])
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  name      String // copie du nom au moment de la commande
+  unit      String
+  quantity  Decimal @db.Decimal(10, 2)
+  unitPrice Decimal @db.Decimal(10, 2) // prix appliqué (après palier)
+  vatRate   Decimal @db.Decimal(4, 2)
+  lineTotal Decimal @db.Decimal(10, 2)
+}
+
+// ----------------------------------------------------------------------------
+//  Mutualisation des livraisons (tranche 7)
+// ----------------------------------------------------------------------------
+
+enum TourStatus {
+  PLANNED
+  CONFIRMED
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+// Une tournée regroupe plusieurs producteurs d'une même zone pour une date.
+model DeliveryTour {
+  id        String     @id @default(cuid())
+  date      DateTime
+  region    String
+  status    TourStatus @default(PLANNED)
+  driverProducerId String? // le producteur qui conduit ce jour-là (optionnel)
+  notes     String?
+  createdAt DateTime   @default(now())
+
+  stops DeliveryTourStop[]
+}
+
+// Un arrêt = ce qu'un producteur dépose dans la tournée (ses commandes du jour).
+model DeliveryTourStop {
+  id         String          @id @default(cuid())
+  tourId     String
+  tour       DeliveryTour    @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  producerId String
+  producer   ProducerProfile @relation(fields: [producerId], references: [id])
+  sequence   Int             @default(0) // ordre de passage
+
+  orders Order[]
+
+  @@unique([tourId, producerId])
+}
+
+// ----------------------------------------------------------------------------
+//  Page Contact
+// ----------------------------------------------------------------------------
+
+// Un message envoyé depuis le formulaire /contact (pas d'email pour l'instant,
+// juste un enregistrement en base — à relire depuis Supabase ou un futur écran admin).
+model ContactMessage {
+  id         String   @id @default(cuid())
+  name       String
+  structure  String?
+  email      String
+  phone      String?
+  profile    String // "producteur" | "restaurateur" | "autre"
+  subject    String // "commande" | "livraison" | "rejoindre" | "facturation" | "autre"
+  message    String
+  consent    Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
