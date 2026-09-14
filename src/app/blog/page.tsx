@@ -5,8 +5,11 @@ import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { NewsletterBand } from "@/components/site/NewsletterBand";
 import { Button } from "@/components/ui/Button";
-import { ARTICLES, EPISODES, ARTICLE_TOPICS, frDate } from "@/lib/content";
+import { frDate, readingMinutes, episodeDuration, type Block } from "@/lib/content";
+import { getVisibleArticles, getVisibleEpisodes } from "@/lib/content-queries";
 import { BlogIndex } from "./BlogIndex";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Le blog",
@@ -14,25 +17,29 @@ export const metadata: Metadata = {
     "Comment ta nourriture est produite, qui gagne quoi sur la chaîne, et ce que ça change dans l'assiette.",
 };
 
-export default function BlogPage() {
-  const featured = ARTICLES.find((a) => a.featured) ?? ARTICLES[0];
-  const cards = ARTICLES.filter((a) => a.slug !== featured.slug).map((a) => ({
+export default async function BlogPage() {
+  const [articles, episodes] = await Promise.all([getVisibleArticles(), getVisibleEpisodes()]);
+  const articleTopics = ["Tout", ...Array.from(new Set(articles.map((a) => a.topic)))];
+
+  const featured = articles.find((a) => a.featured) ?? articles[0];
+  const others = articles.filter((a) => a.slug !== featured?.slug);
+  const cards = others.map((a) => ({
     kind: "article" as const,
     slug: a.slug,
     topic: a.topic,
     title: a.title,
     excerpt: a.excerpt,
     img: a.img,
-    meta: `${frDate(a.date)} · ${a.readMin} min de lecture`,
+    meta: `${frDate(a.publishedAt!)} · ${readingMinutes(a.body as unknown as Block[])} min de lecture`,
   }));
-  const epCards = EPISODES.slice(0, 3).map((e) => ({
+  const epCards = episodes.slice(0, 3).map((e) => ({
     kind: "podcast" as const,
     slug: e.slug,
     topic: e.topic,
     title: e.title,
     excerpt: e.excerpt,
     img: e.img,
-    meta: `Épisode ${e.num} · ${e.durationLabel}`,
+    meta: `Épisode ${e.num} · ${episodeDuration(e.seconds).durationLabel}`,
   }));
 
   return (
@@ -82,18 +89,22 @@ export default function BlogPage() {
 
       {/* Index blog */}
       <div className="mx-auto w-full max-w-[var(--container-max)] px-[var(--container-pad)] pb-20 pt-20">
-        <BlogIndex
-          featured={{
-            slug: featured.slug,
-            topic: featured.topic,
-            title: featured.title,
-            excerpt: featured.excerpt,
-            img: featured.img,
-            meta: `${frDate(featured.date)} · ${featured.readMin} min de lecture`,
-          }}
-          items={[...cards, ...epCards]}
-          topics={ARTICLE_TOPICS}
-        />
+        {featured ? (
+          <BlogIndex
+            featured={{
+              slug: featured.slug,
+              topic: featured.topic,
+              title: featured.title,
+              excerpt: featured.excerpt,
+              img: featured.img,
+              meta: `${frDate(featured.publishedAt!)} · ${readingMinutes(featured.body as unknown as Block[])} min de lecture`,
+            }}
+            items={[...cards, ...epCards]}
+            topics={articleTopics}
+          />
+        ) : (
+          <p className="text-[var(--text-muted)]">Rien à lire pour l&apos;instant, revenez bientôt.</p>
+        )}
       </div>
 
       {/* Bandeau citation */}
@@ -110,52 +121,54 @@ export default function BlogPage() {
       </section>
 
       {/* Teaser podcast */}
-      <section className="bg-[var(--surface-sunken)] py-24">
-        <div className="mx-auto w-full max-w-[var(--container-max)] px-[var(--container-pad)]">
-          <div className="mb-8 flex flex-wrap items-baseline justify-between gap-4">
-            <div>
-              <div className="font-mono text-[12px] font-bold uppercase tracking-[var(--tracking-wide)] text-rose-600">
-                Le podcast
+      {episodes.length > 0 && (
+        <section className="bg-[var(--surface-sunken)] py-24">
+          <div className="mx-auto w-full max-w-[var(--container-max)] px-[var(--container-pad)]">
+            <div className="mb-8 flex flex-wrap items-baseline justify-between gap-4">
+              <div>
+                <div className="font-mono text-[12px] font-bold uppercase tracking-[var(--tracking-wide)] text-rose-600">
+                  Le podcast
+                </div>
+                <h2 className="mt-2 font-display text-[var(--text-display-m)] text-[var(--text-primary)]">
+                  Des gens qui savent de quoi ils parlent
+                </h2>
               </div>
-              <h2 className="mt-2 font-display text-[var(--text-display-m)] text-[var(--text-primary)]">
-                Des gens qui savent de quoi ils parlent
-              </h2>
-            </div>
-            <Link
-              href="/podcast"
-              className="text-[14px] font-semibold text-[var(--text-secondary)] hover:text-green-900"
-            >
-              Tous les épisodes →
-            </Link>
-          </div>
-          <div className="flex flex-col">
-            {EPISODES.slice(0, 3).map((e) => (
               <Link
-                key={e.slug}
                 href="/podcast"
-                className="flex flex-wrap items-center gap-4 border-b border-[var(--border-subtle)] py-4 hover:bg-[var(--surface-card)]"
+                className="text-[14px] font-semibold text-[var(--text-secondary)] hover:text-green-900"
               >
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[var(--rose-100)]">
-                  <svg viewBox="0 0 24 24" className="h-4 w-4 fill-green-900">
-                    <path d="M8 5.5v13l11-6.5z" />
-                  </svg>
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[15px] font-bold text-[var(--text-primary)]">
-                    Ép. {e.num} — {e.title}
-                  </span>
-                  <span className="mt-1 block text-[12px] text-[var(--text-muted)]">
-                    {e.durationLabel} · avec {e.guest}, {e.role}
-                  </span>
-                </span>
-                <span className="shrink-0 text-[12px] text-[var(--text-muted)]">
-                  {frDate(e.date)}
-                </span>
+                Tous les épisodes →
               </Link>
-            ))}
+            </div>
+            <div className="flex flex-col">
+              {episodes.slice(0, 3).map((e) => (
+                <Link
+                  key={e.slug}
+                  href="/podcast"
+                  className="flex flex-wrap items-center gap-4 border-b border-[var(--border-subtle)] py-4 hover:bg-[var(--surface-card)]"
+                >
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[var(--rose-100)]">
+                    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-green-900">
+                      <path d="M8 5.5v13l11-6.5z" />
+                    </svg>
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[15px] font-bold text-[var(--text-primary)]">
+                      Ép. {e.num} — {e.title}
+                    </span>
+                    <span className="mt-1 block text-[12px] text-[var(--text-muted)]">
+                      {episodeDuration(e.seconds).durationLabel} · avec {e.guest}, {e.role}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-[12px] text-[var(--text-muted)]">
+                    {frDate(e.publishedAt!)}
+                  </span>
+                </Link>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       <div className="mx-auto w-full max-w-[var(--container-max)] px-[var(--container-pad)] py-24">
         <NewsletterBand tone="sand" />

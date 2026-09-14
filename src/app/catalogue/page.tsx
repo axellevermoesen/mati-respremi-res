@@ -29,8 +29,8 @@ export default async function CataloguePage({
 
   const where = {
     isActive: true,
+    producer: { user: { status: "ACTIVE" as const }, ...(producteur ? { slug: producteur } : {}) },
     ...(categorie ? { category: categorie } : {}),
-    ...(producteur ? { producer: { slug: producteur } } : {}),
     ...(q
       ? {
           OR: [
@@ -61,16 +61,16 @@ export default async function CataloguePage({
       }),
       prisma.product.groupBy({
         by: ["category"],
-        where: { isActive: true },
+        where: { isActive: true, producer: { user: { status: "ACTIVE" } } },
         _count: { _all: true },
         orderBy: { category: "asc" },
       }),
       prisma.producerProfile.findMany({
-        where: { products: { some: { isActive: true } } },
+        where: { user: { status: "ACTIVE" }, products: { some: { isActive: true } } },
         orderBy: { farmName: "asc" },
         select: { slug: true, farmName: true, _count: { select: { products: true } } },
       }),
-      prisma.product.count({ where: { isActive: true } }),
+      prisma.product.count({ where: { isActive: true, producer: { user: { status: "ACTIVE" } } } }),
     ]),
   );
 

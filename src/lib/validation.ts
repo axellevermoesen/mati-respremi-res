@@ -246,3 +246,112 @@ export const contactSchema = z.object({
 });
 
 export type ContactInput = z.infer<typeof contactSchema>;
+
+/** Un bloc de contenu (voir Block dans src/lib/content.ts). */
+const blockSchema = z.discriminatedUnion("t", [
+  z.object({ t: z.literal("p"), text: z.string().trim().min(1) }),
+  z.object({ t: z.literal("h2"), text: z.string().trim().min(1), id: z.string().trim().min(1) }),
+  z.object({ t: z.literal("quote"), text: z.string().trim().min(1), cite: z.string().trim().optional() }),
+  z.object({ t: z.literal("list"), items: z.array(z.string().trim().min(1)).min(1) }),
+  z.object({
+    t: z.literal("callout"),
+    kicker: z.string().trim().min(1),
+    items: z.array(z.string().trim().min(1)).min(1),
+  }),
+  z.object({
+    t: z.literal("img"),
+    src: z.string().trim().min(1),
+    alt: z.string().trim().default(""),
+    caption: z.string().trim().optional(),
+  }),
+]);
+
+const contentStatus = z.enum(["DRAFT", "SCHEDULED", "PUBLISHED"]);
+
+const scheduledAtField = z
+  .string()
+  .nullish()
+  .transform((v) => (v && v.trim() !== "" ? v.trim() : undefined));
+
+/** Un champ "body" envoyé en JSON (par un input caché) et validé comme une liste de blocs. */
+const bodyField = z.string().transform((raw, ctx) => {
+  try {
+    const parsed = JSON.parse(raw);
+    const result = z.array(blockSchema).safeParse(parsed);
+    if (!result.success) {
+      ctx.addIssue({ code: "custom", message: "Contenu invalide." });
+      return z.NEVER;
+    }
+    return result.data;
+  } catch {
+    ctx.addIssue({ code: "custom", message: "Contenu invalide." });
+    return z.NEVER;
+  }
+});
+
+const slugField = (label: string) =>
+  z
+    .string()
+    .trim()
+    .toLowerCase()
+    .regex(/^[a-z0-9-]+(\/[a-z0-9-]+)*$/, `${label} invalide (lettres, chiffres, tirets, / autorisé).`);
+
+/** Formulaire /admin/pages (création + édition d'une page institutionnelle). */
+export const pageSchema = z.object({
+  title: z.string().trim().min(2, "Titre trop court."),
+  slug: slugField("Slug"),
+  excerpt: z.string().trim().optional().default(""),
+  metaTitle: z.string().trim().optional().default(""),
+  metaDescription: z.string().trim().optional().default(""),
+  status: contentStatus,
+  scheduledAt: scheduledAtField,
+  body: bodyField,
+});
+
+export type PageInput = z.infer<typeof pageSchema>;
+
+/** Formulaire /admin/articles. */
+export const articleSchema = z.object({
+  title: z.string().trim().min(2, "Titre trop court."),
+  slug: slugField("Slug"),
+  excerpt: z.string().trim().optional().default(""),
+  topic: z.string().trim().min(1, "Rubrique requise."),
+  img: z.string().trim().optional().default(""),
+  author: z.string().trim().optional().default(""),
+  authorInitials: z.string().trim().optional().default(""),
+  featured: z.string().nullish().transform((v) => v === "on"),
+  metaTitle: z.string().trim().optional().default(""),
+  metaDescription: z.string().trim().optional().default(""),
+  status: contentStatus,
+  scheduledAt: scheduledAtField,
+  body: bodyField,
+});
+
+export type ArticleInput = z.infer<typeof articleSchema>;
+
+/** Formulaire /admin/podcasts (pas de corps ni de SEO : pas de page dédiée par épisode). */
+export const episodeSchema = z.object({
+  title: z.string().trim().min(2, "Titre trop court."),
+  slug: slugField("Slug"),
+  num: z.string().trim().min(1, "Numéro d'épisode requis."),
+  excerpt: z.string().trim().optional().default(""),
+  topic: z.string().trim().min(1, "Rubrique requise."),
+  guest: z.string().trim().min(1, "Invité requis."),
+  role: z.string().trim().optional().default(""),
+  initials: z.string().trim().optional().default(""),
+  img: z.string().trim().optional().default(""),
+  seconds: z.coerce.number().int().min(1, "Durée invalide."),
+  status: contentStatus,
+  scheduledAt: scheduledAtField,
+});
+
+export type EpisodeInput = z.infer<typeof episodeSchema>;
+
+/** Formulaire /admin/comptes/nouveau (création manuelle d'un compte par l'admin). */
+export const createAccountSchema = z.object({
+  role: z.enum(["PRODUCER", "RESTAURANT", "RESELLER"], { error: "Choisissez un type de compte." }),
+  companyName: z.string().trim().min(2, "Nom trop court."),
+  email,
+});
+
+export type CreateAccountInput = z.infer<typeof createAccountSchema>;

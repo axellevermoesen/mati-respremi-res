@@ -4,19 +4,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { cn } from "@/lib/cn";
 import { Tag } from "@/components/ui/Tag";
-import type { Episode } from "@/lib/content";
+import type { Episode } from "@prisma/client";
+import { frDate, episodeDuration } from "@/lib/content";
 
 function fmt(s: number) {
   const m = Math.floor(s / 60);
   const r = Math.floor(s % 60);
   return `${m}:${String(r).padStart(2, "0")}`;
-}
-function frDate(iso: string) {
-  return new Date(iso + "T00:00:00").toLocaleDateString("fr-FR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
 }
 
 const PLATFORMS = ["Spotify", "Apple Podcasts", "RSS"];
@@ -102,7 +96,7 @@ export function PodcastHub({
           </div>
           <div className="flex flex-[1_1_420px] flex-col justify-center gap-4 p-9 sm:p-12">
             <div className="font-mono text-[12px] font-bold uppercase tracking-[var(--tracking-wide)] text-[var(--text-brand)]">
-              Épisode {current.num} · {frDate(current.date)}
+              Épisode {current.num} · {frDate(current.publishedAt!)}
             </div>
             <div className="text-pretty font-display text-[28px] leading-[var(--leading-snug)] text-[var(--text-primary)]">
               {current.title}
@@ -157,7 +151,7 @@ export function PodcastHub({
                 </button>
                 <div className="flex justify-between font-display text-[12px] text-[var(--text-muted)]">
                   <span>{fmt(t)}</span>
-                  <span>{current.clock}</span>
+                  <span>{episodeDuration(current.seconds).clock}</span>
                 </div>
               </div>
             </div>
@@ -276,7 +270,7 @@ export function PodcastHub({
                     </span>
                     <span className="text-[13px] text-[var(--text-muted)]">{e.role}</span>
                     <span className="text-[13px] text-[var(--text-muted)]">
-                      {e.durationLabel} · {frDate(e.date)}
+                      {episodeDuration(e.seconds).durationLabel} · {frDate(e.publishedAt!)}
                     </span>
                   </span>
                 </button>

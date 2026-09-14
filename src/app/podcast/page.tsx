@@ -4,8 +4,10 @@ import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { NewsletterBand } from "@/components/site/NewsletterBand";
 import { Button } from "@/components/ui/Button";
-import { EPISODES, EPISODE_TOPICS } from "@/lib/content";
+import { getVisibleEpisodes } from "@/lib/content-queries";
 import { PodcastHub } from "./PodcastHub";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Le podcast",
@@ -13,7 +15,10 @@ export const metadata: Metadata = {
     "Un producteur, une heure, zéro langue de bois. On parle du métier, des prix, des ratés et de ce qui finit dans ton assiette.",
 };
 
-export default function PodcastPage() {
+export default async function PodcastPage() {
+  const episodes = await getVisibleEpisodes();
+  const topics = ["Tout", ...Array.from(new Set(episodes.map((e) => e.topic)))];
+
   return (
     <>
       <SiteHeader />
@@ -60,7 +65,13 @@ export default function PodcastPage() {
       </section>
 
       <div id="episodes">
-        <PodcastHub episodes={EPISODES} topics={EPISODE_TOPICS} />
+        {episodes.length > 0 ? (
+          <PodcastHub episodes={episodes} topics={topics} />
+        ) : (
+          <p className="mx-auto w-full max-w-[var(--container-max)] px-[var(--container-pad)] py-24 text-[var(--text-muted)]">
+            Aucun épisode pour l&apos;instant, revenez bientôt.
+          </p>
+        )}
       </div>
 
       {/* Proposer un épisode */}

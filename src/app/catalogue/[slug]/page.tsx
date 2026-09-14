@@ -15,8 +15,8 @@ function eur(n: number) {
 
 async function getProduct(slug: string) {
   return withRetry(() =>
-    prisma.product.findUnique({
-      where: { slug },
+    prisma.product.findFirst({
+      where: { slug, producer: { user: { status: "ACTIVE" } } },
       select: {
         id: true,
         slug: true,

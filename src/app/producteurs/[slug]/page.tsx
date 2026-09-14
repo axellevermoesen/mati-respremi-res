@@ -53,8 +53,8 @@ const SEASON_LABELS: Record<string, string> = {
 
 async function getProfile(slug: string) {
   return withRetry(() =>
-    prisma.producerProfile.findUnique({
-      where: { slug },
+    prisma.producerProfile.findFirst({
+      where: { slug, user: { status: "ACTIVE" } },
       select: {
         userId: true,
         slug: true,

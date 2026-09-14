@@ -26,14 +26,21 @@ enum Role {
   ADMIN
 }
 
+enum AccountStatus {
+  PENDING // inscription pas encore validée par l'admin — pas visible publiquement
+  ACTIVE
+  SUSPENDED // bloqué par l'admin — ne peut plus se connecter
+}
+
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
+  id           String        @id @default(cuid())
+  email        String        @unique
   passwordHash String?
   name         String?
   role         Role
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  status       AccountStatus @default(ACTIVE)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
   producerProfile ProducerProfile?
   buyerProfile    BuyerProfile?
@@ -476,4 +483,79 @@ model ContactMessage {
   message    String
   consent    Boolean  @default(false)
   createdAt  DateTime @default(now())
+}
+
+// ----------------------------------------------------------------------------
+//  Espace admin — pages de contenu (tranche 1)
+// ----------------------------------------------------------------------------
+
+enum ContentStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+}
+
+// Page institutionnelle (À propos, FAQ, CGU, Mentions légales, ...) éditable
+// depuis /admin. Le corps est une liste de blocs (même forme que Block dans
+// src/lib/content.ts) stockée en JSON — pas de vraie base pour les articles/
+// podcasts pour l'instant (tranche suivante).
+model Page {
+  id              String        @id @default(cuid())
+  slug            String        @unique
+  title           String
+  excerpt         String        @default("")
+  body            Json // Block[]
+  status          ContentStatus @default(DRAFT)
+  publishedAt     DateTime?
+  scheduledAt     DateTime?
+  metaTitle       String        @default("")
+  metaDescription String        @default("")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Article du blog. Le temps de lecture se calcule à partir du corps (pas stocké).
+model Article {
+  id              String        @id @default(cuid())
+  slug            String        @unique
+  title           String
+  excerpt         String        @default("")
+  topic           String
+  img             String        @default("")
+  author          String        @default("")
+  authorInitials  String        @default("")
+  featured        Boolean       @default(false)
+  body            Json // Block[]
+  status          ContentStatus @default(DRAFT)
+  publishedAt     DateTime?
+  scheduledAt     DateTime?
+  metaTitle       String        @default("")
+  metaDescription String        @default("")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Épisode de podcast. Pas de page dédiée pour l'instant (tous listés sur /podcast),
+// donc pas de champs SEO ni de corps de texte — juste ce qui s'affiche vraiment.
+// La durée affichée (« 42 min », « 42:10 ») se calcule à partir de `seconds`.
+model Episode {
+  id      String        @id @default(cuid())
+  slug    String        @unique
+  num     String
+  title   String
+  excerpt String        @default("")
+  topic   String
+  guest   String
+  role    String        @default("")
+  initials String       @default("")
+  img     String        @default("")
+  seconds Int           @default(0)
+  status  ContentStatus @default(DRAFT)
+  publishedAt DateTime?
+  scheduledAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

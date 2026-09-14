@@ -5,12 +5,12 @@ import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { NewsletterBand } from "@/components/site/NewsletterBand";
-import { ARTICLES, EPISODES, getArticle, frDate, type Block } from "@/lib/content";
+import { BlockRenderer } from "@/components/site/BlockRenderer";
+import { frDate, readingMinutes, episodeDuration, type Block } from "@/lib/content";
+import { getVisibleArticle, getVisibleArticles, getVisibleEpisodes } from "@/lib/content-queries";
 import { ReadingProgress } from "./ReadingProgress";
 
-export function generateStaticParams() {
-  return ARTICLES.map((a) => ({ slug: a.slug }));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
@@ -18,77 +18,9 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const a = getArticle(slug);
+  const a = await getVisibleArticle(slug);
   if (!a) return { title: "Article introuvable" };
-  return { title: a.title, description: a.excerpt };
-}
-
-function BodyBlock({ b }: { b: Block }) {
-  switch (b.t) {
-    case "p":
-      return <p className="text-pretty">{b.text}</p>;
-    case "h2":
-      return (
-        <h2
-          id={b.id}
-          className="scroll-mt-28 pt-4 font-display text-[26px] leading-[var(--leading-snug)] tracking-[var(--tracking-tight)] text-[var(--text-primary)]"
-        >
-          {b.text}
-        </h2>
-      );
-    case "quote":
-      return (
-        <div className="rounded-[var(--radius-l)] border-l-[3px] border-rose-600 bg-[var(--surface-card)] px-9 py-8 shadow-[var(--shadow-m)]">
-          <div className="text-pretty font-display text-[22px] leading-[var(--leading-snug)] text-green-900">
-            «&nbsp;{b.text}&nbsp;»
-          </div>
-          {b.cite && <div className="mt-4 text-[13px] text-[var(--text-muted)]">{b.cite}</div>}
-        </div>
-      );
-    case "list":
-      return (
-        <div className="flex flex-col gap-3">
-          {b.items.map((it, i) => (
-            <div key={i} className="flex items-start gap-3">
-              <span className="pt-0.5 font-display text-[15px] text-[var(--accent-structural,#73986f)]">
-                {String(i + 1).padStart(2, "0")}
-              </span>
-              <span>{it}</span>
-            </div>
-          ))}
-        </div>
-      );
-    case "callout":
-      return (
-        <div className="rounded-[var(--radius-l)] bg-green-900 p-10">
-          <div className="mb-4 font-mono text-[12px] font-bold uppercase tracking-[var(--tracking-wide)] text-[var(--rose-300,#d698ab)]">
-            {b.kicker}
-          </div>
-          <div className="flex flex-col gap-3.5 text-[16px] leading-relaxed text-[hsl(45_30%_96%_/_0.85)]">
-            {b.items.map((it, i) => (
-              <div key={i}>{it}</div>
-            ))}
-          </div>
-        </div>
-      );
-    case "img":
-      return (
-        <figure className="m-0">
-          <div className="overflow-hidden rounded-[var(--radius-l)]">
-            <Image
-              src={b.src}
-              alt={b.alt}
-              width={1200}
-              height={640}
-              className="h-auto w-full object-cover"
-            />
-          </div>
-          {b.caption && (
-            <figcaption className="mt-3 text-[13px] text-[var(--text-muted)]">{b.caption}</figcaption>
-          )}
-        </figure>
-      );
-  }
+  return { title: a.metaTitle || a.title, description: a.metaDescription || a.excerpt || undefined };
 }
 
 export default async function ArticlePage({
@@ -97,13 +29,16 @@ export default async function ArticlePage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const article = getArticle(slug);
+  const article = await getVisibleArticle(slug);
   if (!article) notFound();
 
-  const toc = article.body.filter((b): b is Extract<Block, { t: "h2" }> => b.t === "h2");
-  const related = ARTICLES.filter((a) => a.slug !== slug).slice(0, 3);
-  const sideLinks = ARTICLES.filter((a) => a.slug !== slug).slice(0, 2);
-  const latestEp = EPISODES[0];
+  const body = article.body as unknown as Block[];
+  const toc = body.filter((b): b is Extract<Block, { t: "h2" }> => b.t === "h2");
+
+  const [allArticles, allEpisodes] = await Promise.all([getVisibleArticles(), getVisibleEpisodes()]);
+  const related = allArticles.filter((a) => a.slug !== slug).slice(0, 3);
+  const sideLinks = allArticles.filter((a) => a.slug !== slug).slice(0, 2);
+  const latestEp = allEpisodes[0];
 
   return (
     <>
@@ -144,7 +79,7 @@ export default async function ArticlePage({
                 {article.author}
               </div>
               <div className="text-[13px] text-[var(--text-muted)]">
-                {frDate(article.date)} · {article.readMin} min de lecture
+                {frDate(article.publishedAt!)} · {readingMinutes(body)} min de lecture
               </div>
             </div>
           </div>
@@ -168,9 +103,7 @@ export default async function ArticlePage({
       {/* Corps + colonne latérale */}
       <div className="mx-auto flex w-full max-w-[var(--container-max)] flex-wrap items-start gap-16 px-[var(--container-pad)] pb-10 pt-16">
         <article className="flex min-w-0 max-w-[720px] flex-[1_1_560px] flex-col gap-6 text-[18px] leading-[1.75] text-[var(--text-secondary)]">
-          {article.body.map((b, i) => (
-            <BodyBlock key={i} b={b} />
-          ))}
+          <BlockRenderer blocks={body} />
           <div className="mt-4 flex flex-wrap gap-2 border-t border-[var(--border-subtle)] pt-6">
             {[article.topic, "Filière", "Traçabilité"].map((t) => (
               <span
@@ -222,44 +155,48 @@ export default async function ArticlePage({
                       {a.title}
                     </span>
                     <span className="mt-1 block text-[12px] text-[var(--text-muted)]">
-                      {a.topic} · {a.readMin} min
+                      {a.topic} · {readingMinutes(a.body as unknown as Block[])} min
                     </span>
                   </span>
                 </Link>
               ))}
-              <Link href="/podcast" className="flex items-center gap-3.5 py-3.5">
-                <span className="relative h-12 w-16 shrink-0 overflow-hidden rounded-[var(--radius-s)]">
-                  <Image src={latestEp.img} alt="" fill sizes="64px" className="object-cover" />
-                </span>
-                <span>
-                  <span className="block text-[14px] font-bold leading-tight text-[var(--text-primary)]">
-                    Ép. {latestEp.num} — {latestEp.title}
+              {latestEp && (
+                <Link href="/podcast" className="flex items-center gap-3.5 py-3.5">
+                  <span className="relative h-12 w-16 shrink-0 overflow-hidden rounded-[var(--radius-s)]">
+                    <Image src={latestEp.img} alt="" fill sizes="64px" className="object-cover" />
                   </span>
-                  <span className="mt-1 block text-[12px] text-[var(--text-muted)]">
-                    Podcast · {latestEp.durationLabel}
+                  <span>
+                    <span className="block text-[14px] font-bold leading-tight text-[var(--text-primary)]">
+                      Ép. {latestEp.num} — {latestEp.title}
+                    </span>
+                    <span className="mt-1 block text-[12px] text-[var(--text-muted)]">
+                      Podcast · {episodeDuration(latestEp.seconds).durationLabel}
+                    </span>
                   </span>
-                </span>
-              </Link>
+                </Link>
+              )}
             </div>
           </div>
 
-          <div className="rounded-[var(--radius-l)] bg-[var(--surface-sunken)] p-7">
-            <div className="mb-3.5 font-mono text-[12px] font-bold uppercase tracking-[var(--tracking-wide)] text-[var(--text-muted)]">
-              Écouter plutôt
+          {latestEp && (
+            <div className="rounded-[var(--radius-l)] bg-[var(--surface-sunken)] p-7">
+              <div className="mb-3.5 font-mono text-[12px] font-bold uppercase tracking-[var(--tracking-wide)] text-[var(--text-muted)]">
+                Écouter plutôt
+              </div>
+              <div className="font-display text-[17px] leading-[var(--leading-snug)] text-[var(--text-primary)]">
+                Ép. {latestEp.num} — {latestEp.title}
+              </div>
+              <div className="mt-2 text-[13px] text-[var(--text-muted)]">
+                {episodeDuration(latestEp.seconds).durationLabel} · avec {latestEp.guest}
+              </div>
+              <Link
+                href="/podcast"
+                className="mt-5 inline-flex h-9 items-center rounded-[var(--radius-m)] bg-[var(--surface-card)] px-4 text-[13px] font-semibold text-green-900 shadow-[inset_0_0_0_1px_var(--border-default)] hover:bg-[var(--sand-100)]"
+              >
+                Écouter l&apos;épisode
+              </Link>
             </div>
-            <div className="font-display text-[17px] leading-[var(--leading-snug)] text-[var(--text-primary)]">
-              Ép. {latestEp.num} — {latestEp.title}
-            </div>
-            <div className="mt-2 text-[13px] text-[var(--text-muted)]">
-              {latestEp.durationLabel} · avec {latestEp.guest}
-            </div>
-            <Link
-              href="/podcast"
-              className="mt-5 inline-flex h-9 items-center rounded-[var(--radius-m)] bg-[var(--surface-card)] px-4 text-[13px] font-semibold text-green-900 shadow-[inset_0_0_0_1px_var(--border-default)] hover:bg-[var(--sand-100)]"
-            >
-              Écouter l&apos;épisode
-            </Link>
-          </div>
+          )}
 
           <div className="rounded-[var(--radius-l)] bg-[var(--surface-card)] p-7 shadow-[var(--shadow-m)]">
             <div className="flex items-center gap-3.5">
@@ -333,7 +270,7 @@ export default async function ArticlePage({
                     {a.title}
                   </span>
                   <span className="text-[12px] text-[var(--text-muted)]">
-                    {frDate(a.date)} · {a.readMin} min
+                    {frDate(a.publishedAt!)} · {readingMinutes(a.body as unknown as Block[])} min
                   </span>
                   <p className="mt-1 text-[14px] leading-relaxed text-[var(--text-secondary)]">
                     {a.excerpt}

@@ -74,6 +74,7 @@ export async function signupAction(
             passwordHash,
             role: "PRODUCER",
             name: companyName,
+            status: "PENDING",
             producerProfile: {
               create: {
                 slug,
@@ -94,6 +95,7 @@ export async function signupAction(
             passwordHash,
             role,
             name: companyName,
+            status: "PENDING",
             buyerProfile: { create: { companyName, kind: role } },
           },
         }),

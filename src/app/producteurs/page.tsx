@@ -41,6 +41,7 @@ export default async function ProducteursPage() {
 
   const producers = await withRetry(() =>
     prisma.producerProfile.findMany({
+      where: { user: { status: "ACTIVE" } },
       orderBy: { farmName: "asc" },
       select: {
         slug: true,
