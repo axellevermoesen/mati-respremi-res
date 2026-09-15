@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/Input";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Button } from "@/components/ui/Button";
-import { BlocksEditor } from "@/components/admin/BlocksEditor";
+import { BlocksEditor, cleanBlocks } from "@/components/admin/BlocksEditor";
 import { SeoPanel } from "@/components/admin/SeoPanel";
 import { StatusField } from "@/components/admin/StatusField";
 import { slugify } from "@/lib/slug";
@@ -69,7 +69,7 @@ export function ArticleEditor({ initial }: { initial?: ArticleFormValues }) {
 
   return (
     <form action={submit} className="flex flex-col gap-7">
-      <input type="hidden" name="body" value={JSON.stringify(blocks)} />
+      <input type="hidden" name="body" value={JSON.stringify(cleanBlocks(blocks))} />
 
       <div className="flex items-center justify-between gap-4">
         <h1 className="font-display text-[26px] text-[var(--text-primary)]">
@@ -160,7 +160,7 @@ export function ArticleEditor({ initial }: { initial?: ArticleFormValues }) {
             setMetaTitle={setMetaTitle}
             metaDescription={metaDescription}
             setMetaDescription={setMetaDescription}
-            body={blocks}
+            body={cleanBlocks(blocks)}
             slugPrefix="blog/"
           />
         </div>

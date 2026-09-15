@@ -4,7 +4,7 @@ import { useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { BlocksEditor } from "@/components/admin/BlocksEditor";
+import { BlocksEditor, cleanBlocks } from "@/components/admin/BlocksEditor";
 import { SeoPanel } from "@/components/admin/SeoPanel";
 import { StatusField } from "@/components/admin/StatusField";
 import { slugify } from "@/lib/slug";
@@ -53,7 +53,7 @@ export function PageEditor({ initial }: { initial?: PageFormValues }) {
 
   return (
     <form action={submit} className="flex flex-col gap-7">
-      <input type="hidden" name="body" value={JSON.stringify(blocks)} />
+      <input type="hidden" name="body" value={JSON.stringify(cleanBlocks(blocks))} />
 
       <div className="flex items-center justify-between gap-4">
         <h1 className="font-display text-[26px] text-[var(--text-primary)]">
@@ -133,7 +133,7 @@ export function PageEditor({ initial }: { initial?: PageFormValues }) {
             setMetaTitle={setMetaTitle}
             metaDescription={metaDescription}
             setMetaDescription={setMetaDescription}
-            body={blocks}
+            body={cleanBlocks(blocks)}
           />
         </div>
       </div>

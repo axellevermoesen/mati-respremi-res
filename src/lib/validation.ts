@@ -279,12 +279,19 @@ const bodyField = z.string().transform((raw, ctx) => {
     const parsed = JSON.parse(raw);
     const result = z.array(blockSchema).safeParse(parsed);
     if (!result.success) {
-      ctx.addIssue({ code: "custom", message: "Contenu invalide." });
+      const issue = result.error.issues[0];
+      const blockIndex = typeof issue?.path[0] === "number" ? issue.path[0] + 1 : undefined;
+      ctx.addIssue({
+        code: "custom",
+        message: blockIndex
+          ? `Bloc de contenu n°${blockIndex} incomplet (${issue.message.toLowerCase()}).`
+          : "Contenu invalide.",
+      });
       return z.NEVER;
     }
     return result.data;
   } catch {
-    ctx.addIssue({ code: "custom", message: "Contenu invalide." });
+    ctx.addIssue({ code: "custom", message: "Contenu illisible (JSON invalide)." });
     return z.NEVER;
   }
 });

@@ -14,6 +14,34 @@ const BLOCK_LABELS: Record<BlockType, string> = {
   img: "Image",
 };
 
+/**
+ * Retire les blocs vides (ajoutés puis jamais remplis) et les lignes vides
+ * dans les listes/encadrés, pour ne jamais bloquer l'enregistrement à cause
+ * d'un bloc oublié — plutôt que de rejeter tout le contenu avec une erreur.
+ */
+export function cleanBlocks(blocks: Block[]): Block[] {
+  return blocks
+    .map((b): Block | null => {
+      switch (b.t) {
+        case "p":
+        case "h2":
+        case "quote":
+          return b.text.trim() ? b : null;
+        case "list": {
+          const items = b.items.map((i) => i.trim()).filter(Boolean);
+          return items.length ? { ...b, items } : null;
+        }
+        case "callout": {
+          const items = b.items.map((i) => i.trim()).filter(Boolean);
+          return b.kicker.trim() && items.length ? { ...b, items } : null;
+        }
+        case "img":
+          return b.src.trim() ? b : null;
+      }
+    })
+    .filter((b): b is Block => b !== null);
+}
+
 function newBlock(t: BlockType): Block {
   switch (t) {
     case "p":
