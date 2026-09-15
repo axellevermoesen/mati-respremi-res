@@ -2,15 +2,16 @@
 
 import { AuthError } from "next-auth";
 import bcrypt from "bcryptjs";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { withRetry } from "@/lib/db";
-import { signIn, signOut } from "@/auth";
+import { auth, signIn, signOut } from "@/auth";
 import { loginSchema, signupSchema } from "@/lib/validation";
 import { slugify } from "@/lib/slug";
 
 export type ActionState = { error?: string } | undefined;
 
-/** Connexion email + mot de passe. Redirige vers /compte en cas de succès. */
+/** Connexion email + mot de passe. Redirige vers /admin (administrateur) ou /compte. */
 export async function loginAction(
   _prev: ActionState,
   formData: FormData,
@@ -27,15 +28,17 @@ export async function loginAction(
     await signIn("credentials", {
       email: parsed.data.email,
       password: parsed.data.password,
-      redirectTo: "/compte",
+      redirect: false,
     });
   } catch (error) {
     if (error instanceof AuthError) {
       return { error: "Email ou mot de passe incorrect." };
     }
-    throw error; // laisse passer la redirection de succès
+    throw error;
   }
-  return undefined;
+
+  const session = await auth();
+  redirect(session?.user?.role === "ADMIN" ? "/admin" : "/compte");
 }
 
 /** Création de compte (producteur ou acheteur) + connexion immédiate. */
