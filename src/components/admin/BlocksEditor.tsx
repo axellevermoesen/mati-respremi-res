@@ -1,6 +1,8 @@
 "use client";
 
+import { useRef } from "react";
 import { slugify } from "@/lib/slug";
+import { normalizeUrl } from "@/lib/inline";
 import type { Block } from "@/lib/content";
 
 type BlockType = Block["t"];
@@ -8,6 +10,7 @@ type BlockType = Block["t"];
 const BLOCK_LABELS: Record<BlockType, string> = {
   p: "Paragraphe",
   h2: "Sous-titre (H2)",
+  h3: "Sous-titre (H3)",
   quote: "Citation",
   list: "Liste numérotée",
   callout: "Encadré",
@@ -25,6 +28,7 @@ export function cleanBlocks(blocks: Block[]): Block[] {
       switch (b.t) {
         case "p":
         case "h2":
+        case "h3":
         case "quote":
           return b.text.trim() ? b : null;
         case "list": {
@@ -48,6 +52,8 @@ function newBlock(t: BlockType): Block {
       return { t: "p", text: "" };
     case "h2":
       return { t: "h2", text: "", id: "" };
+    case "h3":
+      return { t: "h3", text: "", id: "" };
     case "quote":
       return { t: "quote", text: "", cite: "" };
     case "list":
@@ -147,16 +153,15 @@ function BlockEditor({
       </div>
 
       {block.t === "p" && (
-        <textarea
+        <RichTextarea
           rows={3}
           value={block.text}
-          onChange={(e) => onChange({ ...block, text: e.target.value })}
+          onChange={(text) => onChange({ ...block, text })}
           placeholder="Texte du paragraphe…"
-          className="w-full resize-y rounded-[var(--radius-s)] bg-[var(--surface-card)] px-3 py-2.5 text-[14px] leading-relaxed shadow-[inset_0_0_0_1px_var(--border-default)] outline-none"
         />
       )}
 
-      {block.t === "h2" && (
+      {(block.t === "h2" || block.t === "h3") && (
         <input
           value={block.text}
           onChange={(e) => onChange({ ...block, text: e.target.value, id: slugify(e.target.value) })}
@@ -167,12 +172,11 @@ function BlockEditor({
 
       {block.t === "quote" && (
         <div className="flex flex-col gap-2">
-          <textarea
+          <RichTextarea
             rows={2}
             value={block.text}
-            onChange={(e) => onChange({ ...block, text: e.target.value })}
+            onChange={(text) => onChange({ ...block, text })}
             placeholder="Texte de la citation…"
-            className="w-full resize-y rounded-[var(--radius-s)] bg-[var(--surface-card)] px-3 py-2.5 text-[14px] leading-relaxed shadow-[inset_0_0_0_1px_var(--border-default)] outline-none"
           />
           <input
             value={block.cite ?? ""}
@@ -184,12 +188,11 @@ function BlockEditor({
       )}
 
       {block.t === "list" && (
-        <textarea
+        <RichTextarea
           rows={4}
           value={block.items.join("\n")}
-          onChange={(e) => onChange({ ...block, items: e.target.value.split("\n") })}
+          onChange={(text) => onChange({ ...block, items: text.split("\n") })}
           placeholder={"Un élément par ligne…"}
-          className="w-full resize-y rounded-[var(--radius-s)] bg-[var(--surface-card)] px-3 py-2.5 text-[14px] leading-relaxed shadow-[inset_0_0_0_1px_var(--border-default)] outline-none"
         />
       )}
 
@@ -201,12 +204,11 @@ function BlockEditor({
             placeholder="Titre de l'encadré (ex : En bref)"
             className="w-full rounded-[var(--radius-s)] bg-[var(--surface-card)] px-3 py-2 text-[13px] font-semibold shadow-[inset_0_0_0_1px_var(--border-default)] outline-none"
           />
-          <textarea
+          <RichTextarea
             rows={4}
             value={block.items.join("\n")}
-            onChange={(e) => onChange({ ...block, items: e.target.value.split("\n") })}
+            onChange={(text) => onChange({ ...block, items: text.split("\n") })}
             placeholder={"Un élément par ligne…"}
-            className="w-full resize-y rounded-[var(--radius-s)] bg-[var(--surface-card)] px-3 py-2.5 text-[14px] leading-relaxed shadow-[inset_0_0_0_1px_var(--border-default)] outline-none"
           />
         </div>
       )}
@@ -233,6 +235,83 @@ function BlockEditor({
           />
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Zone de texte avec barre d'outils : Gras, Italique, Lien.
+ * On sélectionne un mot, on clique — le texte est entouré des bons signes
+ * (**gras**, *italique*, [texte](adresse)), que le site public transforme en vraie mise en forme.
+ */
+function RichTextarea({
+  value,
+  onChange,
+  rows,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  rows: number;
+  placeholder: string;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  function apply(kind: "b" | "i" | "a") {
+    const el = ref.current;
+    if (!el) return;
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const selected = value.slice(start, end);
+
+    let insert: string;
+    let innerStart: number;
+    let inner: string;
+    if (kind === "a") {
+      const raw = window.prompt("Adresse du lien (ex : https://exemple.fr ou /blog)");
+      if (!raw || !raw.trim()) return;
+      inner = selected || "texte du lien";
+      insert = `[${inner}](${normalizeUrl(raw)})`;
+      innerStart = start + 1;
+    } else {
+      const mark = kind === "b" ? "**" : "*";
+      inner = selected || (kind === "b" ? "texte en gras" : "texte en italique");
+      insert = `${mark}${inner}${mark}`;
+      innerStart = start + mark.length;
+    }
+
+    onChange(value.slice(0, start) + insert + value.slice(end));
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(innerStart, innerStart + inner.length);
+    });
+  }
+
+  const btn =
+    "rounded-[var(--radius-s)] bg-[var(--surface-card)] px-2.5 py-1 text-[12px] text-[var(--text-secondary)] shadow-[inset_0_0_0_1px_var(--border-default)] hover:bg-[var(--sand-100)]";
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center gap-1.5">
+        <button type="button" className={`${btn} font-bold`} onMouseDown={(e) => e.preventDefault()} onClick={() => apply("b")}>
+          Gras
+        </button>
+        <button type="button" className={`${btn} italic`} onMouseDown={(e) => e.preventDefault()} onClick={() => apply("i")}>
+          Italique
+        </button>
+        <button type="button" className={`${btn} underline`} onMouseDown={(e) => e.preventDefault()} onClick={() => apply("a")}>
+          Lien
+        </button>
+        <span className="ml-2 text-[11px] text-[var(--text-muted)]">Sélectionnez du texte, puis cliquez.</span>
+      </div>
+      <textarea
+        ref={ref}
+        rows={rows}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full resize-y rounded-[var(--radius-s)] bg-[var(--surface-card)] px-3 py-2.5 text-[14px] leading-relaxed shadow-[inset_0_0_0_1px_var(--border-default)] outline-none"
+      />
     </div>
   );
 }

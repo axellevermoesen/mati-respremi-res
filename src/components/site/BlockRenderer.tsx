@@ -1,5 +1,6 @@
 import Image from "next/image";
 import type { Block } from "@/lib/content";
+import { InlineText } from "@/components/site/InlineText";
 
 export function BlockRenderer({ blocks }: { blocks: Block[] }) {
   return (
@@ -14,7 +15,11 @@ export function BlockRenderer({ blocks }: { blocks: Block[] }) {
 function BodyBlock({ b }: { b: Block }) {
   switch (b.t) {
     case "p":
-      return <p className="text-pretty">{b.text}</p>;
+      return (
+        <p className="text-pretty">
+          <InlineText text={b.text} />
+        </p>
+      );
     case "h2":
       return (
         <h2
@@ -24,11 +29,20 @@ function BodyBlock({ b }: { b: Block }) {
           {b.text}
         </h2>
       );
+    case "h3":
+      return (
+        <h3
+          id={b.id}
+          className="scroll-mt-28 pt-2 font-display text-[20px] leading-[var(--leading-snug)] text-[var(--text-primary)]"
+        >
+          {b.text}
+        </h3>
+      );
     case "quote":
       return (
         <div className="rounded-[var(--radius-l)] border-l-[3px] border-rose-600 bg-[var(--surface-card)] px-9 py-8 shadow-[var(--shadow-m)]">
           <div className="text-pretty font-display text-[22px] leading-[var(--leading-snug)] text-green-900">
-            «&nbsp;{b.text}&nbsp;»
+            «&nbsp;<InlineText text={b.text} />&nbsp;»
           </div>
           {b.cite && <div className="mt-4 text-[13px] text-[var(--text-muted)]">{b.cite}</div>}
         </div>
@@ -41,7 +55,9 @@ function BodyBlock({ b }: { b: Block }) {
               <span className="pt-0.5 font-display text-[15px] text-[var(--accent-structural,#73986f)]">
                 {String(i + 1).padStart(2, "0")}
               </span>
-              <span>{it}</span>
+              <span>
+                <InlineText text={it} />
+              </span>
             </div>
           ))}
         </div>
@@ -52,9 +68,11 @@ function BodyBlock({ b }: { b: Block }) {
           <div className="mb-4 font-mono text-[12px] font-bold uppercase tracking-[var(--tracking-wide)] text-[var(--rose-300,#d698ab)]">
             {b.kicker}
           </div>
-          <div className="flex flex-col gap-3.5 text-[16px] leading-relaxed text-[hsl(45_30%_96%_/_0.85)]">
+          <div className="flex flex-col gap-3.5 text-[16px] leading-relaxed text-[hsl(45_30%_96%_/_0.85)] [&_a]:text-[var(--rose-300,#d698ab)] [&_a:hover]:text-white">
             {b.items.map((it, i) => (
-              <div key={i}>{it}</div>
+              <div key={i}>
+                <InlineText text={it} />
+              </div>
             ))}
           </div>
         </div>

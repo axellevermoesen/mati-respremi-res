@@ -4,26 +4,29 @@
  * ce fichier ne garde que ce qui est réutilisé un peu partout.
  */
 
+import { stripInline } from "@/lib/inline";
+
 export type Block =
   | { t: "p"; text: string }
   | { t: "h2"; text: string; id: string }
+  | { t: "h3"; text: string; id: string }
   | { t: "quote"; text: string; cite?: string }
   | { t: "list"; items: string[] }
   | { t: "callout"; kicker: string; items: string[] }
   | { t: "img"; src: string; alt: string; caption?: string };
 
-/** Temps de lecture estimé (~200 mots/minute), minimum 1 minute. */
-export function readingMinutes(body: Block[]): number {
-  const words = body
+export function blocksWordCount(body: Block[]): number {
+  return body
     .map((b) => {
       switch (b.t) {
         case "p":
         case "h2":
+        case "h3":
         case "quote":
-          return b.text;
+          return stripInline(b.text);
         case "list":
         case "callout":
-          return b.items.join(" ");
+          return b.items.map(stripInline).join(" ");
         case "img":
           return b.caption ?? "";
       }
@@ -31,7 +34,11 @@ export function readingMinutes(body: Block[]): number {
     .join(" ")
     .split(/\s+/)
     .filter(Boolean).length;
-  return Math.max(1, Math.round(words / 200));
+}
+
+/** Temps de lecture estimé (~200 mots/minute), minimum 1 minute. */
+export function readingMinutes(body: Block[]): number {
+  return Math.max(1, Math.round(blocksWordCount(body) / 200));
 }
 
 /** Formats d'affichage d'une durée d'épisode à partir de sa longueur en secondes. */

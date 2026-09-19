@@ -251,6 +251,7 @@ export type ContactInput = z.infer<typeof contactSchema>;
 const blockSchema = z.discriminatedUnion("t", [
   z.object({ t: z.literal("p"), text: z.string().trim().min(1) }),
   z.object({ t: z.literal("h2"), text: z.string().trim().min(1), id: z.string().trim().min(1) }),
+  z.object({ t: z.literal("h3"), text: z.string().trim().min(1), id: z.string().trim().min(1) }),
   z.object({ t: z.literal("quote"), text: z.string().trim().min(1), cite: z.string().trim().optional() }),
   z.object({ t: z.literal("list"), items: z.array(z.string().trim().min(1)).min(1) }),
   z.object({

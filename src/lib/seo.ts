@@ -1,28 +1,7 @@
-import type { Block } from "@/lib/content";
+import { blocksWordCount, type Block } from "@/lib/content";
 
 export type SeoCheck = { label: string; ok: boolean };
 export type SeoReport = { score: number; checks: SeoCheck[] };
-
-function wordCount(blocks: Block[]): number {
-  return blocks
-    .map((b) => {
-      switch (b.t) {
-        case "p":
-        case "h2":
-          return b.text;
-        case "quote":
-          return b.text;
-        case "list":
-        case "callout":
-          return b.items.join(" ");
-        case "img":
-          return b.caption ?? "";
-      }
-    })
-    .join(" ")
-    .split(/\s+/)
-    .filter(Boolean).length;
-}
 
 /** Score de référencement sur 100, avec le détail des points contrôlés (esprit Yoast). */
 export function computeSeoScore(input: {
@@ -33,7 +12,7 @@ export function computeSeoScore(input: {
 }): SeoReport {
   const { title, metaTitle, metaDescription, body } = input;
   const h2Count = body.filter((b) => b.t === "h2").length;
-  const words = wordCount(body);
+  const words = blocksWordCount(body);
 
   const checks: SeoCheck[] = [
     { label: "Titre (H1) rempli", ok: title.trim().length > 0 },
