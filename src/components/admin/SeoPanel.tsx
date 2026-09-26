@@ -62,7 +62,7 @@ export function SeoPanel({
           Aperçu Google
         </div>
         <div className="mt-2 text-[13px] text-[var(--accent-structural,#73986f)]">
-          matierespremieres.fr › {slugPrefix}
+          matieres-premieres.fr › {slugPrefix}
           {slug || "…"}
         </div>
         <div className="text-[16px] text-[#1a0dab]">{metaTitle || title || "Titre"}</div>
