@@ -46,8 +46,12 @@ export async function loginAction(
     throw error;
   }
 
-  const session = await auth();
-  redirect(session?.user?.role === "ADMIN" ? "/admin" : "/compte");
+  // Le rôle se lit en base : juste après signIn, auth() ne voit pas encore le
+  // nouveau cookie de session dans cette même requête.
+  const user = await withRetry(() =>
+    prisma.user.findUnique({ where: { email: parsed.data.email }, select: { role: true } }),
+  );
+  redirect(user?.role === "ADMIN" ? "/admin" : "/compte");
 }
 
 /** Création de compte (producteur ou acheteur) + connexion immédiate. */

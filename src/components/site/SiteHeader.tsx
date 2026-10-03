@@ -71,9 +71,15 @@ export async function SiteHeader({ fluid = false }: { fluid?: boolean } = {}) {
                   )}
                 </Link>
               )}
-              <Button href="/compte" variant="outline" size="sm">
-                Mon compte
-              </Button>
+              {session?.user?.role === "ADMIN" ? (
+                <Button href="/admin" variant="outline" size="sm">
+                  Administration
+                </Button>
+              ) : (
+                <Button href="/compte" variant="outline" size="sm">
+                  Mon compte
+                </Button>
+              )}
               <form action={logoutAction}>
                 <Button type="submit" variant="ghost" size="sm" className="hidden! md:inline-flex!">
                   Se déconnecter

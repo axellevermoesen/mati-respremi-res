@@ -48,6 +48,7 @@ export default async function ComptePage({
     }),
   );
   if (!user) redirect("/connexion");
+  if (user.role === "ADMIN") redirect("/admin");
 
   const banner = <EmailVerifyBanner verified={!!user.emailVerifiedAt} notice={notice} />;
 
