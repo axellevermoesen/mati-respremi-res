@@ -39,11 +39,34 @@ model User {
   name         String?
   role         Role
   status       AccountStatus @default(ACTIVE)
+  // Date à laquelle l'utilisateur a cliqué le lien de confirmation reçu par e-mail.
+  emailVerifiedAt DateTime?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
   producerProfile ProducerProfile?
   buyerProfile    BuyerProfile?
+  authTokens      AuthToken[]
+}
+
+enum AuthTokenType {
+  VERIFY_EMAIL // lien « confirmer mon adresse »
+  RESET_PASSWORD // lien « choisir un nouveau mot de passe »
+}
+
+// Jeton envoyé par e-mail. On ne stocke que son empreinte (sha256) : une fuite de
+// la base ne permet pas de réutiliser les liens.
+model AuthToken {
+  id        String        @id @default(cuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      AuthTokenType
+  tokenHash String        @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime      @default(now())
+
+  @@index([userId, type])
 }
 
 // ----------------------------------------------------------------------------

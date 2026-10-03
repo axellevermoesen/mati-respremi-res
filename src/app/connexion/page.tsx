@@ -6,7 +6,7 @@ import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Checkbox } from "@/components/ui/Checkbox";
-import { loginAction, signupAction } from "@/lib/actions/auth";
+import { loginAction, requestPasswordResetAction, signupAction } from "@/lib/actions/auth";
 import { cn } from "@/lib/cn";
 
 type Profile = "producteur" | "restaurateur";
@@ -63,6 +63,10 @@ export default function ConnexionPage() {
 
   const [loginState, submitLogin, loginPending] = useActionState(loginAction, undefined);
   const [signupState, submitSignup, signupPending] = useActionState(signupAction, undefined);
+  const [forgotState, submitForgot, forgotPending] = useActionState(
+    requestPasswordResetAction,
+    undefined,
+  );
 
   const resto = profile === "restaurateur";
   const isSignup = view === "signup";
@@ -308,17 +312,28 @@ export default function ConnexionPage() {
                 Ça arrive, même aux meilleurs affineurs. Indiquez votre email professionnel, on
                 vous envoie un lien de réinitialisation.
               </p>
-              <div className="mt-7">
-                <Input label="Email professionnel" type="email" placeholder="vous@votre-maison.fr" />
-              </div>
-              <div className="mt-6">
-                <Button size="lg" className="w-full" disabled>
-                  Envoyer le lien
-                </Button>
-              </div>
-              <p className="mt-2 text-[12px] text-[var(--text-muted)]">
-                Bientôt disponible — pour l&apos;instant, contacte-nous pour réinitialiser.
-              </p>
+              {forgotState?.sent ? (
+                <p className="mt-7 rounded-[var(--radius-m)] bg-[var(--surface-sunken)] px-4 py-3 text-[14px] leading-[var(--leading-relaxed)] text-[var(--text-primary)]">
+                  C&apos;est envoyé. Si un compte existe avec cette adresse, vous recevrez un
+                  lien dans quelques minutes (pensez à regarder dans les indésirables). Il est
+                  valable 1 heure.
+                </p>
+              ) : (
+                <form action={submitForgot} className="mt-7 flex flex-col gap-4">
+                  <Input
+                    name="email"
+                    label="Email professionnel"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    placeholder="vous@votre-maison.fr"
+                  />
+                  <FormError message={forgotState?.error} />
+                  <Button type="submit" size="lg" className="mt-2 w-full" disabled={forgotPending}>
+                    {forgotPending ? "Envoi…" : "Envoyer le lien"}
+                  </Button>
+                </form>
+              )}
               <button
                 type="button"
                 onClick={() => setView("login")}

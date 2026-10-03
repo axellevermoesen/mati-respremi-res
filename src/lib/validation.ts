@@ -18,6 +18,19 @@ export const signupSchema = z.object({
   password: z.string().min(8, "8 caractères minimum."),
 });
 
+export const forgotPasswordSchema = z.object({ email });
+
+export const resetPasswordSchema = z
+  .object({
+    token: z.string().min(1, "Lien invalide."),
+    password: z.string().min(8, "8 caractères minimum."),
+    confirm: z.string(),
+  })
+  .refine((d) => d.password === d.confirm, {
+    message: "Les deux mots de passe ne sont pas identiques.",
+    path: ["confirm"],
+  });
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type SignupInput = z.infer<typeof signupSchema>;
 

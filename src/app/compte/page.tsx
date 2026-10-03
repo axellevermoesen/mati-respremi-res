@@ -11,6 +11,7 @@ import { Container } from "@/components/ui/Container";
 import { Badge } from "@/components/ui/Badge";
 import { ORDER_STATUS_LABEL, ORDER_STATUS_TONE } from "@/lib/orders";
 import type { ProducerProfile, BuyerProfile, User } from "@prisma/client";
+import { EmailVerifyBanner } from "@/components/site/EmailVerifyBanner";
 
 export const metadata: Metadata = { title: "Tableau de bord" };
 
@@ -31,7 +32,12 @@ function frLongDate(d: Date) {
   return d.toLocaleDateString("fr-FR", { weekday: "long", day: "2-digit", month: "long" });
 }
 
-export default async function ComptePage() {
+export default async function ComptePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ email?: string }>;
+}) {
+  const { email: notice } = await searchParams;
   const session = await auth();
   if (!session?.user) redirect("/connexion");
 
@@ -43,19 +49,27 @@ export default async function ComptePage() {
   );
   if (!user) redirect("/connexion");
 
+  const banner = <EmailVerifyBanner verified={!!user.emailVerifiedAt} notice={notice} />;
+
   if (user.role === "PRODUCER") {
     if (!user.producerProfile) redirect("/inscription/producteur");
-    return <ProducerDashboard profile={user.producerProfile} />;
+    return <ProducerDashboard profile={user.producerProfile} banner={banner} />;
   }
 
-  return <BuyerAccount user={user} />;
+  return <BuyerAccount user={user} banner={banner} />;
 }
 
 /* --------------------------------------------------------------------------- */
 /*  Tableau de bord producteur                                                  */
 /* --------------------------------------------------------------------------- */
 
-async function ProducerDashboard({ profile }: { profile: ProducerProfile }) {
+async function ProducerDashboard({
+  profile,
+  banner,
+}: {
+  profile: ProducerProfile;
+  banner: React.ReactNode;
+}) {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -130,6 +144,7 @@ async function ProducerDashboard({ profile }: { profile: ProducerProfile }) {
 
   return (
     <div className="px-6 py-8 sm:px-10 lg:px-12">
+        {banner}
         {/* En-tête */}
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -302,14 +317,17 @@ function Kpi({ label, value, hint }: { label: string; value: string; hint: strin
 
 async function BuyerAccount({
   user,
+  banner,
 }: {
   user: User & { buyerProfile: BuyerProfile | null };
+  banner: React.ReactNode;
 }) {
   const displayName = user.buyerProfile?.companyName ?? user.name ?? user.email;
 
   return (
     <main className="py-16">
       <Container className="max-w-[640px]">
+        {banner}
         <div className="font-mono text-[12px] font-bold uppercase tracking-[var(--tracking-wide)] text-[var(--text-brand)]">
           Mon compte
         </div>

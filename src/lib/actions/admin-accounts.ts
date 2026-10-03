@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { withRetry } from "@/lib/db";
 import { createAccountSchema } from "@/lib/validation";
 import { slugify } from "@/lib/slug";
+import { onStatusChange } from "@/lib/onboarding";
 
 export type AccountActionState = { error?: string; tempPassword?: string } | undefined;
 
@@ -26,7 +27,21 @@ export async function setAccountStatus(
   const ctx = await requireAdmin();
   if (ctx.error) return { error: ctx.error };
 
-  await withRetry(() => prisma.user.update({ where: { id: userId }, data: { status } }));
+  const before = await withRetry(() =>
+    prisma.user.findUnique({ where: { id: userId }, select: { status: true } }),
+  );
+  if (!before) return { error: "Compte introuvable." };
+
+  const user = await withRetry(() =>
+    prisma.user.update({
+      where: { id: userId },
+      data: { status },
+      select: { id: true, email: true, name: true, role: true, status: true },
+    }),
+  );
+  // E-mail « compte validé » + statut à jour dans Brevo.
+  await onStatusChange({ ...user, name: user.name ?? user.email }, before.status);
+
   revalidatePath("/admin/comptes");
   revalidatePath("/producteurs");
   revalidatePath("/catalogue");

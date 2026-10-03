@@ -56,6 +56,11 @@ export default async function AdminAccountDetailPage({
               Email
             </div>
             <div className="mt-1 text-[var(--text-primary)]">{user.email}</div>
+            <div className="mt-0.5 text-[12px] text-[var(--text-muted)]">
+              {user.emailVerifiedAt
+                ? `✓ Adresse confirmée le ${user.emailVerifiedAt.toLocaleDateString("fr-FR")}`
+                : "Adresse pas encore confirmée"}
+            </div>
           </div>
           {user.producerProfile && (
             <>
