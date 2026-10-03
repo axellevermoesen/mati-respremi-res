@@ -14,7 +14,16 @@ function hash(token: string) {
 
 /** Adresse publique du site, pour construire les liens des e-mails. */
 export function siteUrl(path: string) {
-  const base = (process.env.AUTH_URL || "http://localhost:3100").replace(/\/$/, "");
+  // AUTH_URL en priorité ; sinon, sur Vercel, le domaine de production (variable
+  // système fournie par Vercel) — jamais localhost en ligne.
+  const vercelProd = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  const base = (
+    process.env.AUTH_URL ||
+    (vercelProd ? `https://${vercelProd}` : "") ||
+    (process.env.NODE_ENV === "production"
+      ? "https://www.matieres-premieres.fr"
+      : "http://localhost:3100")
+  ).replace(/\/$/, "");
   return `${base}${path}`;
 }
 
