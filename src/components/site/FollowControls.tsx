@@ -71,8 +71,8 @@ export function FollowButton({ producerId }: { producerId: string }) {
 }
 
 /**
- * Bouton de la page publique d'un producteur. Visiteur → lien vers la connexion ;
- * particulier ou pro → suivre / ne plus suivre.
+ * Bouton « Suivre ce producteur » de la page publique d'un producteur.
+ * Visiteur → lien vers la connexion ; particulier ou pro → suivre / ne plus suivre.
  */
 export function ProducerFollowToggle({
   producerId,
@@ -94,19 +94,19 @@ export function ProducerFollowToggle({
 
   if (!loggedIn) {
     return (
-      <Button href="/connexion" variant="outline" className="w-full">
-        Suivre ses actus
+      <Button href="/connexion" variant="outline" title="Connectez-vous pour suivre ses actus">
+        Suivre ce producteur
       </Button>
     );
   }
   if (!canFollow) return null;
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col items-center gap-1.5">
       <Button
         type="button"
         variant={on ? "ghost" : "outline"}
-        className={cn("w-full", on && "shadow-[inset_0_0_0_1px_var(--border-default)]")}
+        className={cn(on && "shadow-[inset_0_0_0_1px_var(--border-default)]")}
         disabled={busy}
         onClick={() => {
           const next = !on;
@@ -121,10 +121,10 @@ export function ProducerFollowToggle({
           });
         }}
       >
-        {on ? "✓ Vous suivez ses actus" : "Suivre ses actus"}
+        {on ? "✓ Vous suivez ce producteur" : "Suivre ce producteur"}
       </Button>
       {on && (
-        <span className="text-center text-[12px] text-[var(--text-muted)]">
+        <span className="max-w-[260px] text-center text-[12px] text-[var(--text-muted)]">
           {audience === "pro" ? (
             <>Ses actus pros arrivent dans <Link href="/compte" className="underline">votre espace</Link>.</>
           ) : (

@@ -426,8 +426,8 @@ async function BuyerAccount({
           </p>
           {posts.length === 0 ? (
             <p className="mt-4 rounded-[var(--radius-l)] bg-[var(--surface-card)] px-6 py-8 text-center text-[14px] text-[var(--text-muted)] shadow-[var(--shadow-s)]">
-              Rien pour l&apos;instant. Suivez un producteur depuis sa page (bouton « Suivre ses
-              actus ») ou passez une première commande : ses actus pros arriveront ici.
+              Rien pour l&apos;instant. Suivez un producteur depuis sa page (bouton « Suivre ce
+              producteur ») ou passez une première commande : ses actus pros arriveront ici.
             </p>
           ) : (
             <div className="mt-4 flex flex-col gap-4">

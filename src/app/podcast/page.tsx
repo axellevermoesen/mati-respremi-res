@@ -15,7 +15,12 @@ export const metadata: Metadata = {
     "Un producteur, une heure, zéro langue de bois. On parle du métier, des prix, des ratés et de ce qui finit dans ton assiette.",
 };
 
-export default async function PodcastPage() {
+export default async function PodcastPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ episode?: string }>;
+}) {
+  const { episode } = await searchParams;
   const episodes = await getVisibleEpisodes();
   const topics = ["Tout", ...Array.from(new Set(episodes.map((e) => e.topic)))];
 
@@ -66,7 +71,7 @@ export default async function PodcastPage() {
 
       <div id="episodes">
         {episodes.length > 0 ? (
-          <PodcastHub episodes={episodes} topics={topics} />
+          <PodcastHub episodes={episodes} topics={topics} initialSlug={episode} />
         ) : (
           <p className="mx-auto w-full max-w-[var(--container-max)] px-[var(--container-pad)] py-24 text-[var(--text-muted)]">
             Aucun épisode pour l&apos;instant, revenez bientôt.

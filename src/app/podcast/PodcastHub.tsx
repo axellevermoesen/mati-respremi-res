@@ -18,13 +18,18 @@ const PLATFORMS = ["Spotify", "Apple Podcasts", "RSS"];
 export function PodcastHub({
   episodes,
   topics,
+  initialSlug,
 }: {
   episodes: Episode[];
   topics: string[];
+  /** Épisode à afficher en premier (lien « Écouter l'épisode » de l'accueil). */
+  initialSlug?: string;
 }) {
   const [query, setQuery] = useState("");
   const [topic, setTopic] = useState("Tout");
-  const [epId, setEpId] = useState(episodes[0]?.slug ?? "");
+  const [epId, setEpId] = useState(
+    episodes.find((e) => e.slug === initialSlug)?.slug ?? episodes[0]?.slug ?? "",
+  );
   const [playing, setPlaying] = useState(false);
   const [t, setT] = useState(0);
   const timer = useRef<ReturnType<typeof setInterval> | undefined>(undefined);

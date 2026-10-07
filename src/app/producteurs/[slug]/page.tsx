@@ -344,7 +344,16 @@ export default async function ProducteurPublicPage({
                 </p>
               )}
             </div>
-            <div className="flex gap-3 pb-1.5">
+            <div className="flex flex-wrap items-start gap-3 pb-1.5">
+              {!isOwner && (
+                <ProducerFollowToggle
+                  producerId={profile.id}
+                  followed={!!follow}
+                  canFollow={canFollow}
+                  loggedIn={!!session?.user}
+                  audience={audience}
+                />
+              )}
               {markets.length > 0 || hasFarmShop ? (
                 <Button href="#en-direct" variant="secondary">
                   Où les trouver
@@ -824,15 +833,6 @@ export default async function ProducteurPublicPage({
 
             {/* --- Colonne latérale --- */}
             <aside className="flex flex-col gap-4 lg:sticky lg:top-[88px]">
-              {!isOwner && (
-                <ProducerFollowToggle
-                  producerId={profile.id}
-                  followed={!!follow}
-                  canFollow={canFollow}
-                  loggedIn={!!session?.user}
-                  audience={audience}
-                />
-              )}
 
               {audience === "pub" && role !== "CONSUMER" && (
                 <div className="rounded-[var(--radius-l)] bg-[var(--surface-inverse)] p-5">

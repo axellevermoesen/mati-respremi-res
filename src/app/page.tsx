@@ -6,6 +6,11 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { Container } from "@/components/ui/Container";
+import { getVisibleArticles, getVisibleEpisodes } from "@/lib/content-queries";
+import { readingMinutes, type Block } from "@/lib/content";
+
+// Les derniers articles et épisodes publiés depuis l'admin.
+export const dynamic = "force-dynamic";
 
 const STEPS = [
   {
@@ -32,13 +37,18 @@ const CATALOGUE = [
   { image: "/img/farm-2.jpeg", eyebrow: "Émilie-Romagne", title: "Parmigiano Reggiano DOP 24 mois", subtitle: "Caseificio Rossi" },
 ];
 
-const ARTICLES = [
-  { title: "Pourquoi votre comté met 18 mois à devenir bon", meta: "Filière · 6 min de lecture" },
-  { title: "Mutualiser sa tournée : ce que ça change vraiment sur la facture", meta: "Logistique · 4 min de lecture" },
-  { title: "Cuisiner de saison en février : le guide", meta: "Cuisine · 8 min de lecture" },
-];
+export default async function HomePage() {
+  const [allArticles, allEpisodes] = await Promise.all([
+    getVisibleArticles().catch(() => []),
+    getVisibleEpisodes().catch(() => []),
+  ]);
+  const articles = allArticles.slice(0, 3).map((a) => ({
+    slug: a.slug,
+    title: a.title,
+    meta: `${a.topic} · ${readingMinutes(a.body as unknown as Block[])} min de lecture`,
+  }));
+  const episode = allEpisodes[0];
 
-export default function HomePage() {
   return (
     <>
       <SiteHeader />
@@ -308,10 +318,15 @@ export default function HomePage() {
                 <h2 className="font-display text-[20px]">Le blog</h2>
               </div>
               <div className="flex flex-col">
-                {ARTICLES.map((a) => (
+                {articles.length === 0 && (
+                  <p className="py-[18px] text-[14px] text-[var(--text-muted)]">
+                    Les premiers articles arrivent bientôt.
+                  </p>
+                )}
+                {articles.map((a) => (
                   <Link
-                    key={a.title}
-                    href="/blog"
+                    key={a.slug}
+                    href={`/blog/${a.slug}`}
                     className="group border-b border-[var(--border-subtle)] py-[18px]"
                   >
                     <div className="text-[15px] font-bold text-[var(--text-primary)] transition-colors group-hover:text-[var(--text-brand)]">
@@ -320,6 +335,14 @@ export default function HomePage() {
                     <div className="mt-1.5 text-[12px] text-[var(--text-muted)]">{a.meta}</div>
                   </Link>
                 ))}
+                {articles.length > 0 && (
+                  <Link
+                    href="/blog"
+                    className="pt-4 text-[13px] font-semibold text-[var(--text-brand)] hover:underline"
+                  >
+                    Tous les articles →
+                  </Link>
+                )}
               </div>
             </div>
             <div>
@@ -327,21 +350,32 @@ export default function HomePage() {
                 <span className="text-[18px]">🎧</span>
                 <h2 className="font-display text-[20px]">Le podcast</h2>
               </div>
-              <div className="rounded-[var(--radius-l)] bg-[var(--surface-card)] p-6 shadow-[var(--shadow-m)]">
-                <Badge tone="secondary">Épisode 12</Badge>
-                <h3 className="mt-3 font-display text-[20px] text-[var(--text-primary)]">
-                  Le prix juste, vu du champ
-                </h3>
-                <p className="mt-2 text-[14px] leading-[var(--leading-relaxed)] text-[var(--text-secondary)]">
-                  Trois maraîchers racontent comment ils fixent leurs tarifs — et
-                  ce que la vente directe change vraiment.
-                </p>
-                <div className="mt-4">
-                  <Button href="/podcast" variant="outline" size="sm">
-                    Écouter l'épisode
-                  </Button>
+              {episode ? (
+                <div className="rounded-[var(--radius-l)] bg-[var(--surface-card)] p-6 shadow-[var(--shadow-m)]">
+                  <Badge tone="secondary">Épisode {episode.num}</Badge>
+                  <h3 className="mt-3 font-display text-[20px] text-[var(--text-primary)]">
+                    {episode.title}
+                  </h3>
+                  {episode.excerpt && (
+                    <p className="mt-2 text-[14px] leading-[var(--leading-relaxed)] text-[var(--text-secondary)]">
+                      {episode.excerpt}
+                    </p>
+                  )}
+                  <div className="mt-4">
+                    <Button
+                      href={`/podcast?episode=${encodeURIComponent(episode.slug)}#episodes`}
+                      variant="outline"
+                      size="sm"
+                    >
+                      Écouter l&apos;épisode
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="rounded-[var(--radius-l)] bg-[var(--surface-card)] p-6 text-[14px] text-[var(--text-muted)] shadow-[var(--shadow-m)]">
+                  Le premier épisode arrive bientôt.
+                </div>
+              )}
             </div>
           </div>
         </Container>
