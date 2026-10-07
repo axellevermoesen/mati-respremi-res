@@ -8,6 +8,7 @@ const ROLE_LABEL: Record<string, string> = {
   PRODUCER: "Producteur",
   RESTAURANT: "Restaurateur",
   RESELLER: "Revendeur",
+  CONSUMER: "Particulier",
 };
 
 export default async function AdminAccountDetailPage({

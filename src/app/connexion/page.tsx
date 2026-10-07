@@ -9,7 +9,9 @@ import { Checkbox } from "@/components/ui/Checkbox";
 import { loginAction, requestPasswordResetAction, signupAction } from "@/lib/actions/auth";
 import { cn } from "@/lib/cn";
 
-type Profile = "producteur" | "restaurateur";
+type Profile = "producteur" | "restaurateur" | "particulier";
+
+const PROFILES: Profile[] = ["producteur", "restaurateur", "particulier"];
 type View = "login" | "signup" | "forgot";
 
 const EASE = "520ms cubic-bezier(.4,0,.2,1)";
@@ -31,6 +33,46 @@ const PANELS: Record<
     kicker: "Espace restaurateur",
     title: "Une commande, une livraison, vingt producteurs.",
     body: "Retrouvez votre catalogue, vos producteurs et le créneau de la prochaine tournée en cuisine.",
+  },
+  particulier: {
+    image: "/img/farm-2.jpeg",
+    alt: "Champs d'une ferme du réseau",
+    kicker: "Espace particulier",
+    title: "Suivez les fermes que vous aimez.",
+    body: "Arrivages, portes ouvertes, marchés : les actus de vos producteurs dans un fil, et un petit récap le dimanche matin.",
+  },
+};
+
+const COPY: Record<
+  Profile,
+  { role: string; signup: string; login: string; nameLabel: string; namePh: string; emailLabel: string; emailPh: string }
+> = {
+  producteur: {
+    role: "PRODUCER",
+    signup: "Créer mon espace producteur",
+    login: "Accéder à mon espace producteur",
+    nameLabel: "Nom de l'exploitation",
+    namePh: "Ferme des Trois Chênes",
+    emailLabel: "Email professionnel",
+    emailPh: "camille@ferme-trois-chenes.fr",
+  },
+  restaurateur: {
+    role: "RESTAURANT",
+    signup: "Créer mon espace restaurateur",
+    login: "Accéder à mon espace restaurateur",
+    nameLabel: "Nom de l'établissement",
+    namePh: "Le Comptoir des Halles",
+    emailLabel: "Email professionnel",
+    emailPh: "chef@comptoir-des-halles.fr",
+  },
+  particulier: {
+    role: "CONSUMER",
+    signup: "Créer mon espace particulier",
+    login: "Accéder à mon espace particulier",
+    nameLabel: "Prénom et nom",
+    namePh: "Claire Martin",
+    emailLabel: "Email",
+    emailPh: "claire.martin@exemple.fr",
   },
 };
 
@@ -68,34 +110,27 @@ export default function ConnexionPage() {
     undefined,
   );
 
-  const resto = profile === "restaurateur";
+  const idx = PROFILES.indexOf(profile);
+  const copy = COPY[profile];
   const isSignup = view === "signup";
   const isForgot = view === "forgot";
-  const role = resto ? "RESTAURANT" : "PRODUCER";
-
-  const ctaLabel = isSignup
-    ? resto
-      ? "Créer mon espace restaurateur"
-      : "Créer mon espace producteur"
-    : resto
-      ? "Accéder à mon espace restaurateur"
-      : "Accéder à mon espace producteur";
+  const ctaLabel = isSignup ? copy.signup : copy.login;
 
   return (
     <div className="grid min-h-screen lg:grid-cols-[1.02fr_1fr]">
       {/* ---- Colonne image (défile verticalement) ---- */}
       <div className="relative hidden overflow-hidden bg-green-900 lg:block">
         <div
-          className="absolute left-0 top-0 h-[200%] w-full"
+          className="absolute left-0 top-0 h-[300%] w-full"
           style={{
-            transform: resto ? "translateY(-50%)" : "translateY(0)",
+            transform: `translateY(-${(idx * 100) / 3}%)`,
             transition: `transform ${EASE}`,
           }}
         >
-          {(["producteur", "restaurateur"] as Profile[]).map((p) => {
+          {PROFILES.map((p) => {
             const panel = PANELS[p];
             return (
-              <div key={p} className="relative h-1/2 w-full">
+              <div key={p} className="relative h-1/3 w-full">
                 <Image src={panel.image} alt={panel.alt} fill className="object-cover" />
                 <div className="absolute inset-0 bg-[linear-gradient(to_top,hsl(150_30%_8%_/_0.88),hsl(150_30%_8%_/_0.25)_55%,hsl(150_30%_8%_/_0.35))]" />
                 <div className="absolute inset-0 flex flex-col justify-between p-12">
@@ -151,22 +186,22 @@ export default function ConnexionPage() {
                 Choisissez votre profil. Le reste, on s&apos;en occupe.
               </p>
 
-              {/* Bascule Producteur / Restaurateur */}
+              {/* Bascule Producteur / Restaurateur / Particulier */}
               <div className="relative mt-7 flex rounded-[var(--radius-pill)] bg-[var(--surface-sunken)] p-1">
                 <div
-                  className="absolute bottom-1 left-1 top-1 w-[calc(50%-4px)] rounded-[var(--radius-pill)] bg-green-700 shadow-[var(--shadow-s)]"
+                  className="absolute bottom-1 left-1 top-1 w-[calc((100%-8px)/3)] rounded-[var(--radius-pill)] bg-green-700 shadow-[var(--shadow-s)]"
                   style={{
-                    transform: resto ? "translateX(100%)" : "translateX(0)",
+                    transform: `translateX(${idx * 100}%)`,
                     transition: `transform ${EASE}`,
                   }}
                 />
-                {(["producteur", "restaurateur"] as Profile[]).map((p) => (
+                {PROFILES.map((p) => (
                   <button
                     key={p}
                     type="button"
                     onClick={() => setProfile(p)}
                     className={cn(
-                      "relative z-10 flex-1 px-2 py-2.5 text-[14px] font-bold capitalize transition-colors duration-200",
+                      "relative z-10 flex-1 px-1 py-2.5 text-[13px] font-bold capitalize sm:text-[14px] transition-colors duration-200",
                       profile === p ? "text-white" : "text-[var(--text-secondary)]",
                     )}
                   >
@@ -180,13 +215,11 @@ export default function ConnexionPage() {
                 <form action={submitLogin} className="mt-7 flex flex-col gap-4">
                   <Input
                     name="email"
-                    label="Email professionnel"
+                    label={copy.emailLabel}
                     type="email"
                     autoComplete="email"
                     required
-                    placeholder={
-                      resto ? "chef@comptoir-des-halles.fr" : "camille@ferme-trois-chenes.fr"
-                    }
+                    placeholder={copy.emailPh}
                   />
                   <Input
                     name="password"
@@ -223,22 +256,21 @@ export default function ConnexionPage() {
               {/* ----- Formulaire création de compte ----- */}
               {isSignup && (
                 <form action={submitSignup} className="mt-7 flex flex-col gap-4">
-                  <input type="hidden" name="role" value={role} />
+                  <input type="hidden" name="role" value={copy.role} />
                   <Input
                     name="companyName"
-                    label={resto ? "Nom de l'établissement" : "Nom de l'exploitation"}
+                    label={copy.nameLabel}
                     required
-                    placeholder={resto ? "Le Comptoir des Halles" : "Ferme des Trois Chênes"}
+                    autoComplete={profile === "particulier" ? "name" : "organization"}
+                    placeholder={copy.namePh}
                   />
                   <Input
                     name="email"
-                    label="Email professionnel"
+                    label={copy.emailLabel}
                     type="email"
                     autoComplete="email"
                     required
-                    placeholder={
-                      resto ? "chef@comptoir-des-halles.fr" : "camille@ferme-trois-chenes.fr"
-                    }
+                    placeholder={copy.emailPh}
                   />
                   <Input
                     name="password"

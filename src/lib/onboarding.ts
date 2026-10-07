@@ -17,8 +17,15 @@ const STATUT: Record<AccountStatus, string> = {
 };
 
 function roleList(role: Role) {
-  return role === "PRODUCER" ? BREVO_LISTS.producteurs : BREVO_LISTS.acheteurs;
+  if (role === "PRODUCER") return BREVO_LISTS.producteurs;
+  if (role === "CONSUMER") return BREVO_LISTS.particuliers;
+  return BREVO_LISTS.acheteurs;
 }
+
+const ROLE_ATTR: Partial<Record<Role, string>> = {
+  PRODUCER: "PRODUCTEUR",
+  CONSUMER: "PARTICULIER",
+};
 
 async function verifyUrl(userId: string) {
   const token = await createAuthToken(userId, "VERIFY_EMAIL");
@@ -39,7 +46,7 @@ export async function onSignup(user: AccountInfo) {
     safely("bienvenue", async () => {
       const mail = welcomeEmail({
         name: user.name,
-        isProducer: user.role === "PRODUCER",
+        audience: user.role === "PRODUCER" ? "producer" : user.role === "CONSUMER" ? "consumer" : "buyer",
         verifyUrl: await verifyUrl(user.id),
       });
       await sendEmail({ to: user.email, toName: user.name, ...mail });
@@ -48,7 +55,7 @@ export async function onSignup(user: AccountInfo) {
       upsertContact({
         email: user.email,
         attributes: {
-          ROLE: user.role === "PRODUCER" ? "PRODUCTEUR" : "ACHETEUR",
+          ROLE: ROLE_ATTR[user.role] ?? "ACHETEUR",
           ETABLISSEMENT: user.name,
           STATUT: STATUT[user.status],
           EMAIL_CONFIRME: false,

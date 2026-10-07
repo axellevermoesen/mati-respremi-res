@@ -7,6 +7,7 @@ const ROLE_LABEL: Record<string, string> = {
   PRODUCER: "Producteur",
   RESTAURANT: "Restaurateur",
   RESELLER: "Revendeur",
+  CONSUMER: "Particulier",
 };
 const STATUS_LABEL: Record<string, string> = {
   PENDING: "À valider",
@@ -19,7 +20,7 @@ const STATUS_CLASS: Record<string, string> = {
   SUSPENDED: "bg-[hsl(9_49%_88%)] text-[var(--state-danger)]",
 };
 
-const ROLES = ["Tous", "PRODUCER", "RESTAURANT", "RESELLER"] as const;
+const ROLES = ["Tous", "PRODUCER", "RESTAURANT", "RESELLER", "CONSUMER"] as const;
 
 export default async function AdminComptesListPage({
   searchParams,
@@ -34,7 +35,7 @@ export default async function AdminComptesListPage({
       where: {
         role:
           roleFilter === "Tous"
-            ? { in: ["PRODUCER", "RESTAURANT", "RESELLER"] }
+            ? { in: ["PRODUCER", "RESTAURANT", "RESELLER", "CONSUMER"] }
             : (roleFilter as Role),
       },
       orderBy: { createdAt: "desc" },

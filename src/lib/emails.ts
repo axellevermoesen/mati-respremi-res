@@ -38,10 +38,19 @@ ${opts.footnote ? `<tr><td style="font-size:12px;line-height:1.5;color:${C.muted
 }
 
 /** À l'inscription : bienvenue + confirmation de l'adresse. */
-export function welcomeEmail(p: { name: string; isProducer: boolean; verifyUrl: string }) {
-  const next = p.isProducer
-    ? "Pendant que notre équipe vérifie votre inscription, vous pouvez déjà compléter votre page producteur et ajouter vos produits."
-    : "Pendant que notre équipe vérifie votre inscription, vous pouvez déjà parcourir le catalogue et découvrir les producteurs du réseau.";
+export function welcomeEmail(p: {
+  name: string;
+  audience: "producer" | "buyer" | "consumer";
+  verifyUrl: string;
+}) {
+  const next = {
+    producer:
+      "Pendant que notre équipe vérifie votre inscription, vous pouvez déjà compléter votre page producteur et ajouter vos produits.",
+    buyer:
+      "Pendant que notre équipe vérifie votre inscription, vous pouvez déjà parcourir le catalogue et découvrir les producteurs du réseau.",
+    consumer:
+      "Choisissez les producteurs que vous voulez suivre : leurs actus arriveront dans votre fil, et chaque dimanche matin dans un petit récap. Pas d'actu, pas de mail.",
+  }[p.audience];
   return {
     subject: "Bienvenue sur Matières Premières — confirmez votre adresse",
     html: layout({
@@ -92,6 +101,39 @@ export function resetPasswordEmail(p: { resetUrl: string }) {
       body: "Vous avez demandé à réinitialiser votre mot de passe. Cliquez sur le bouton ci-dessous pour en choisir un nouveau.",
       cta: { label: "Choisir un nouveau mot de passe", href: p.resetUrl },
       footnote: "Ce lien est valable 1 heure et ne fonctionne qu'une fois. Si vous n'avez rien demandé, ignorez cet e-mail : votre mot de passe reste inchangé.",
+    }),
+  };
+}
+
+/** Récap du dimanche d'un particulier : les actus de la semaine de ses producteurs. */
+export function weeklyDigestEmail(p: {
+  firstName: string;
+  week: string;
+  items: { producer: string; kind: string; title: string; excerpt: string; url: string }[];
+  feedUrl: string;
+  settingsUrl: string;
+}) {
+  const producers = new Set(p.items.map((i) => i.producer)).size;
+  const rows = p.items
+    .map(
+      (i) => `<div style="padding:16px 0;border-top:1px solid #eee">
+  <div style="font-size:12px;color:${C.muted}">${esc(i.producer)} · <span style="color:${C.rose600};font-weight:700;text-transform:uppercase;letter-spacing:.06em;font-size:11px">${esc(i.kind)}</span></div>
+  <div style="font-family:Georgia,serif;font-size:18px;color:${C.green900};padding:4px 0"><a href="${i.url}" style="color:${C.green900};text-decoration:none">${esc(i.title)}</a></div>
+  ${i.excerpt ? `<div style="font-size:14px;line-height:1.6;color:${C.text}">${esc(i.excerpt)}</div>` : ""}
+</div>`,
+    )
+    .join("");
+  return {
+    subject: `Cette semaine chez vos producteurs (${producers} ${producers > 1 ? "fermes" : "ferme"})`,
+    html: layout({
+      preheader: p.items
+        .slice(0, 2)
+        .map((i) => i.title)
+        .join(" · "),
+      title: `Bonjour ${p.firstName}`,
+      body: `${esc(p.week)} : voici ce qui a bougé chez vos producteurs.${rows}`,
+      cta: { label: "Voir toutes les actus", href: p.feedUrl },
+      footnote: `Vous recevez ce mail parce que vous suivez ces producteurs sur Matières Premières. Pas d'actu, pas de mail. <a href="${p.settingsUrl}" style="color:${C.green700}">Choisir qui y figure ou ne plus le recevoir</a>.`,
     }),
   };
 }

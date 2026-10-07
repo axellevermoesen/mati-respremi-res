@@ -12,7 +12,7 @@ export const loginSchema = z.object({
 });
 
 export const signupSchema = z.object({
-  role: z.enum(["PRODUCER", "RESTAURANT", "RESELLER"]),
+  role: z.enum(["PRODUCER", "RESTAURANT", "RESELLER", "CONSUMER"]),
   companyName: z.string().trim().min(2, "Ce nom est trop court."),
   email,
   password: z.string().min(8, "8 caractères minimum."),
@@ -376,3 +376,61 @@ export const createAccountSchema = z.object({
 });
 
 export type CreateAccountInput = z.infer<typeof createAccountSchema>;
+
+/** Actu publiée par un producteur (/compte/actus). */
+export const postSchema = z
+  .object({
+    kind: z.enum(["TEXT", "PHOTO", "PRODUCT", "EVENT", "RESTAURANT"]).catch("TEXT"),
+    title: z.string().trim().min(3, "Donnez un titre à votre actu.").max(140, "Titre trop long (140 caractères max)."),
+    body: z.string().trim().max(2000, "Texte trop long (2 000 caractères max).").default(""),
+    bodyPro: z.string().trim().max(2000, "Texte pro trop long (2 000 caractères max).").optional().default(""),
+    imageUrl: z.string().trim().url().optional().or(z.literal("").transform(() => undefined)),
+    forPros: z.boolean(),
+    forPublic: z.boolean(),
+    eventDate: z.string().trim().optional().default(""),
+    eventTime: z.string().trim().max(60).optional().default(""),
+    eventPlace: z.string().trim().max(160).optional().default(""),
+    productName: z.string().trim().max(120).optional().default(""),
+    productNote: z.string().trim().max(160).optional().default(""),
+    restaurantName: z.string().trim().max(120).optional().default(""),
+    restaurantPlace: z.string().trim().max(160).optional().default(""),
+  })
+  .refine((d) => d.forPros || d.forPublic, {
+    message: "Choisissez au moins un public : les pros, les particuliers, ou les deux.",
+    path: ["forPros"],
+  })
+  .refine((d) => d.kind !== "EVENT" || !!d.eventDate, {
+    message: "Indiquez la date de l'événement.",
+    path: ["eventDate"],
+  })
+  .refine((d) => d.kind !== "PRODUCT" || !!d.productName, {
+    message: "Indiquez le nom du produit.",
+    path: ["productName"],
+  })
+  .refine((d) => d.kind !== "RESTAURANT" || !!d.restaurantName, {
+    message: "Indiquez le nom du restaurant.",
+    path: ["restaurantName"],
+  })
+  .refine((d) => d.kind !== "PHOTO" || !!d.imageUrl, {
+    message: "Ajoutez une photo.",
+    path: ["imageUrl"],
+  });
+
+export type PostInput = z.input<typeof postSchema>;
+
+export const RADIUS_OPTIONS = ["5 km", "20 km", "50 km", "Toute la région"] as const;
+
+/** « Mon compte » d'un particulier. */
+export const consumerSettingsSchema = z.object({
+  firstName: z.string().trim().min(1, "Prénom requis.").max(60),
+  lastName: z.string().trim().max(60).optional().default(""),
+  phone: z.string().trim().max(30).optional().default(""),
+  city: z.string().trim().max(80).optional().default(""),
+  radius: z.enum(RADIUS_OPTIONS).catch("20 km"),
+  sundayMail: z.boolean(),
+});
+
+export const changePasswordSchema = z.object({
+  current: z.string().min(1, "Indiquez votre mot de passe actuel."),
+  next: z.string().min(8, "8 caractères minimum pour le nouveau mot de passe."),
+});

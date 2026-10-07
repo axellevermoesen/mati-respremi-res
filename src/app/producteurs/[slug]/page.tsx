@@ -10,6 +10,9 @@ import { SiteFooter } from "@/components/site/SiteFooter";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { fmtMoney, type SaleFormat } from "@/lib/formats";
+import { PostCard } from "@/components/site/PostCard";
+import { ProducerFollowToggle } from "@/components/site/FollowControls";
+import { POST_CARD_SELECT, audienceWhere } from "@/lib/posts";
 
 type Audience = "pro" | "pub";
 
@@ -56,6 +59,7 @@ async function getProfile(slug: string) {
     prisma.producerProfile.findFirst({
       where: { slug, user: { status: "ACTIVE" } },
       select: {
+        id: true,
         userId: true,
         slug: true,
         farmName: true,
@@ -177,6 +181,28 @@ export default async function ProducteurPublicPage({
 
   const vis = profile.sectionVisibility as Vis;
   const show = (key: string) => vis?.[key]?.[audience] ?? true;
+
+  // Actus : la version pro ou grand public selon qui regarde.
+  const role = session?.user?.role;
+  const canFollow = role === "CONSUMER" || isBuyer;
+  const [posts, follow] = await Promise.all([
+    withRetry(() =>
+      prisma.producerPost.findMany({
+        where: { producerId: profile.id, ...audienceWhere(audience) },
+        orderBy: { createdAt: "desc" },
+        take: 3,
+        select: POST_CARD_SELECT,
+      }),
+    ).catch(() => []),
+    canFollow
+      ? withRetry(() =>
+          prisma.producerFollow.findUnique({
+            where: { userId_producerId: { userId: session!.user.id, producerId: profile.id } },
+            select: { id: true },
+          }),
+        ).catch(() => null)
+      : Promise.resolve(null),
+  ]);
 
   const values = profile.values
     ? profile.values.split(",").map((s) => s.trim()).filter(Boolean)
@@ -783,11 +809,32 @@ export default async function ProducteurPublicPage({
                   )}
                 </section>
               )}
+
+              {posts.length > 0 && (
+                <section id="actus">
+                  <Kicker>Dernières actus</Kicker>
+                  <div className="flex flex-col gap-4">
+                    {posts.map((post) => (
+                      <PostCard key={post.id} post={post} audience={audience} showProducer={false} />
+                    ))}
+                  </div>
+                </section>
+              )}
             </div>
 
             {/* --- Colonne latérale --- */}
             <aside className="flex flex-col gap-4 lg:sticky lg:top-[88px]">
-              {audience === "pub" && (
+              {!isOwner && (
+                <ProducerFollowToggle
+                  producerId={profile.id}
+                  followed={!!follow}
+                  canFollow={canFollow}
+                  loggedIn={!!session?.user}
+                  audience={audience}
+                />
+              )}
+
+              {audience === "pub" && role !== "CONSUMER" && (
                 <div className="rounded-[var(--radius-l)] bg-[var(--surface-inverse)] p-5">
                   <div className="font-display text-[var(--text-heading-m)] leading-[var(--leading-snug)] text-white">
                     Restaurant ou revendeur ?

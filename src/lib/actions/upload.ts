@@ -50,7 +50,7 @@ async function putObject(path: string, file: File): Promise<Result> {
 
 /**
  * Téléverse une image producteur et la rattache au bon endroit.
- * `kind` : "cover" | "logo" | "product" | "media"
+ * `kind` : "cover" | "logo" | "product" | "media" | "post"
  * pour "product" : `productId` requis ; pour "media" : `slot` (0-4).
  */
 export async function uploadProducerImage(formData: FormData): Promise<Result> {
@@ -105,6 +105,13 @@ export async function uploadProducerImage(formData: FormData): Promise<Result> {
       }),
     );
     return r;
+  }
+
+  if (kind === "post") {
+    // Photo d'une actu pas encore publiée : on stocke juste le fichier, l'URL
+    // sera enregistrée avec l'actu.
+    const stamp = new Date().getTime().toString(36);
+    return putObject(`${base}/posts/${stamp}.${ext}`, file);
   }
 
   return { error: "Type d'image inconnu." };

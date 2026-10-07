@@ -54,7 +54,7 @@ export async function loginAction(
   redirect(user?.role === "ADMIN" ? "/admin" : "/compte");
 }
 
-/** Création de compte (producteur ou acheteur) + connexion immédiate. */
+/** Création de compte (producteur, acheteur pro ou particulier) + connexion immédiate. */
 export async function signupAction(
   _prev: ActionState,
   formData: FormData,
@@ -101,6 +101,22 @@ export async function signupAction(
                 region: "",
               },
             },
+          },
+          select: { id: true, status: true },
+        }),
+      );
+    } else if (role === "CONSUMER") {
+      // Particulier : rien à vérifier côté admin, le compte est actif tout de suite.
+      const [firstName, ...rest] = companyName.split(/\s+/);
+      created = await withRetry(() =>
+        prisma.user.create({
+          data: {
+            email,
+            passwordHash,
+            role: "CONSUMER",
+            name: companyName,
+            status: "ACTIVE",
+            consumerProfile: { create: { firstName, lastName: rest.join(" ") || null } },
           },
           select: { id: true, status: true },
         }),

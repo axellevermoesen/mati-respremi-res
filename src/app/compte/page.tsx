@@ -12,6 +12,9 @@ import { Badge } from "@/components/ui/Badge";
 import { ORDER_STATUS_LABEL, ORDER_STATUS_TONE } from "@/lib/orders";
 import type { ProducerProfile, BuyerProfile, User } from "@prisma/client";
 import { EmailVerifyBanner } from "@/components/site/EmailVerifyBanner";
+import { PostCard } from "@/components/site/PostCard";
+import { POST_CARD_SELECT } from "@/lib/posts";
+import { ConsumerHome } from "./ConsumerHome";
 
 export const metadata: Metadata = { title: "Tableau de bord" };
 
@@ -19,6 +22,7 @@ const ROLE_LABEL: Record<string, string> = {
   PRODUCER: "Producteur",
   RESTAURANT: "Restaurant",
   RESELLER: "Épicerie / revendeur",
+  CONSUMER: "Particulier",
   ADMIN: "Administrateur",
 };
 
@@ -35,16 +39,16 @@ function frLongDate(d: Date) {
 export default async function ComptePage({
   searchParams,
 }: {
-  searchParams: Promise<{ email?: string }>;
+  searchParams: Promise<{ email?: string; onglet?: string; archives?: string }>;
 }) {
-  const { email: notice } = await searchParams;
+  const { email: notice, onglet, archives } = await searchParams;
   const session = await auth();
   if (!session?.user) redirect("/connexion");
 
   const user = await withRetry(() =>
     prisma.user.findUnique({
       where: { id: session.user.id },
-      include: { producerProfile: true, buyerProfile: true },
+      include: { producerProfile: true, buyerProfile: true, consumerProfile: true },
     }),
   );
   if (!user) redirect("/connexion");
@@ -55,6 +59,21 @@ export default async function ComptePage({
   if (user.role === "PRODUCER") {
     if (!user.producerProfile) redirect("/inscription/producteur");
     return <ProducerDashboard profile={user.producerProfile} banner={banner} />;
+  }
+
+  if (user.role === "CONSUMER") {
+    const firstName =
+      user.consumerProfile?.firstName || user.name?.split(/\s+/)[0] || "et bienvenue";
+    return (
+      <ConsumerHome
+        userId={user.id}
+        firstName={firstName}
+        sundayMail={user.consumerProfile?.sundayMail ?? true}
+        tab={onglet === "gerer" ? "gerer" : "actus"}
+        showArchives={archives === "1"}
+        banner={banner}
+      />
+    );
   }
 
   return <BuyerAccount user={user} banner={banner} />;
@@ -154,7 +173,12 @@ async function ProducerDashboard({
             </h1>
             <p className="mt-1 text-[14px] text-[var(--text-muted)]">Votre tableau de bord</p>
           </div>
-          <Button href="/compte/produits">Ajouter un produit</Button>
+          <div className="flex flex-wrap gap-2">
+            <Button href="/compte/actus" variant="outline">
+              Publier une actu
+            </Button>
+            <Button href="/compte/produits">Ajouter un produit</Button>
+          </div>
         </div>
 
         {/* KPIs */}
@@ -313,7 +337,7 @@ function Kpi({ label, value, hint }: { label: string; value: string; hint: strin
 }
 
 /* --------------------------------------------------------------------------- */
-/*  Compte acheteur (inchangé)                                                  */
+/*  Compte acheteur pro                                                         */
 /* --------------------------------------------------------------------------- */
 
 async function BuyerAccount({
@@ -324,6 +348,26 @@ async function BuyerAccount({
   banner: React.ReactNode;
 }) {
   const displayName = user.buyerProfile?.companyName ?? user.name ?? user.email;
+
+  // Actus « pros » des producteurs que ce compte suit ou chez qui il a déjà commandé.
+  const posts = await withRetry(() =>
+    prisma.producerPost.findMany({
+      where: {
+        forPros: true,
+        producer: {
+          OR: [
+            { followers: { some: { userId: user.id } } },
+            ...(user.buyerProfile
+              ? [{ ordersReceived: { some: { buyerId: user.buyerProfile.id } } }]
+              : []),
+          ],
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      select: POST_CARD_SELECT,
+    }),
+  ).catch(() => []);
 
   return (
     <main className="py-16">
@@ -372,6 +416,27 @@ async function BuyerAccount({
             </Button>
           </form>
         </div>
+
+        <section className="mt-12">
+          <h2 className="font-display text-[20px] text-[var(--text-primary)]">
+            Actus de vos producteurs
+          </h2>
+          <p className="mt-1.5 text-[14px] text-[var(--text-muted)]">
+            Arrivages, disponibilités, événements : ce que vos producteurs partagent avec les pros.
+          </p>
+          {posts.length === 0 ? (
+            <p className="mt-4 rounded-[var(--radius-l)] bg-[var(--surface-card)] px-6 py-8 text-center text-[14px] text-[var(--text-muted)] shadow-[var(--shadow-s)]">
+              Rien pour l&apos;instant. Suivez un producteur depuis sa page (bouton « Suivre ses
+              actus ») ou passez une première commande : ses actus pros arriveront ici.
+            </p>
+          ) : (
+            <div className="mt-4 flex flex-col gap-4">
+              {posts.map((post) => (
+                <PostCard key={post.id} post={post} audience="pro" />
+              ))}
+            </div>
+          )}
+        </section>
 
         <p className="mt-10 text-[13px] text-[var(--text-muted)]">
           <Link href="/" className="hover:underline">

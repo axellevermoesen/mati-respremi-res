@@ -23,6 +23,7 @@ enum Role {
   PRODUCER // producteur
   RESTAURANT // restaurateur (acheteur)
   RESELLER // revendeur / épicerie (acheteur)
+  CONSUMER // particulier (BtoC) : suit des producteurs, reçoit leurs actus
   ADMIN
 }
 
@@ -33,20 +34,22 @@ enum AccountStatus {
 }
 
 model User {
-  id           String        @id @default(cuid())
-  email        String        @unique
-  passwordHash String?
-  name         String?
-  role         Role
-  status       AccountStatus @default(ACTIVE)
+  id              String        @id @default(cuid())
+  email           String        @unique
+  passwordHash    String?
+  name            String?
+  role            Role
+  status          AccountStatus @default(ACTIVE)
   // Date à laquelle l'utilisateur a cliqué le lien de confirmation reçu par e-mail.
   emailVerifiedAt DateTime?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   producerProfile ProducerProfile?
   buyerProfile    BuyerProfile?
+  consumerProfile ConsumerProfile?
   authTokens      AuthToken[]
+  follows         ProducerFollow[]
 }
 
 enum AuthTokenType {
@@ -124,8 +127,8 @@ model ProducerProfile {
   farmShopAddress String? // adresse du point de vente
 
   // Rubrique "Où trouver mes produits"
-  resellers            Json? // [{ "nom","type","ville","origine" }]
-  amaps                Json? // [{ "nom","detail","origine" }]
+  resellers             Json? // [{ "nom","type","ville","origine" }]
+  amaps                 Json? // [{ "nom","detail","origine" }]
   otherResellersMention Boolean @default(false)
 
   // Rubrique "Ils utilisent mes produits"
@@ -159,18 +162,18 @@ model ProducerProfile {
   orderCutoffTime String? // heure limite de commande
 
   // Règles commerciales (pense-bête)
-  minOrderValue   Decimal? @db.Decimal(10, 2) // minimum de commande
+  minOrderValue    Decimal? @db.Decimal(10, 2) // minimum de commande
   freeShippingFrom Decimal? @db.Decimal(10, 2) // "franco" : livraison offerte au-dessus de ce montant
-  leadTimeDays    Int      @default(2) // délai de préparation
-  orderCutoffDay  Int? // "commande avant jour X" (0 = lundi ... 6 = dimanche)
+  leadTimeDays     Int      @default(2) // délai de préparation
+  orderCutoffDay   Int? // "commande avant jour X" (0 = lundi ... 6 = dimanche)
 
   // Vitrine BtoC
-  visibility      ProfileVisibility @default(PUBLIC)
-  btoCEnabled     Boolean           @default(false) // page grand public activée
-  btoCStory       String? // texte long "grand public"
-  farmShopInfo    String? // vente à la ferme : horaires, adresse
-  markets         Market[] // marchés où le trouver
-  salePoints      SalePoint[] // points de vente / revendeurs partenaires
+  visibility   ProfileVisibility @default(PUBLIC)
+  btoCEnabled  Boolean           @default(false) // page grand public activée
+  btoCStory    String? // texte long "grand public"
+  farmShopInfo String? // vente à la ferme : horaires, adresse
+  markets      Market[] // marchés où le trouver
+  salePoints   SalePoint[] // points de vente / revendeurs partenaires
 
   stripeAccountId String? // Stripe Connect
 
@@ -183,6 +186,8 @@ model ProducerProfile {
   connectionsTo   ProducerConnection[] @relation("ConnectionTo")
   clientAccess    ClientAccess[]
   tourStops       DeliveryTourStop[]
+  posts           ProducerPost[]
+  followers       ProducerFollow[]
 }
 
 model Market {
@@ -239,7 +244,7 @@ model BuyerProfile {
   // Restaurant et épicerie = même type de compte "acheteur", traités à l'identique
   // partout dans l'app. On garde juste l'info du type d'établissement (choisi à
   // l'inscription) au cas où elle serve plus tard (stats, filtres producteur).
-  kind        Role @default(RESTAURANT) // RESTAURANT ou RESELLER
+  kind        Role    @default(RESTAURANT) // RESTAURANT ou RESELLER
   siret       String?
   description String?
   phone       String?
@@ -253,6 +258,80 @@ model BuyerProfile {
   orders       Order[]
   clientAccess ClientAccess[]
   cart         Cart?
+}
+
+// ----------------------------------------------------------------------------
+//  Espace particulier (BtoC) — suit des producteurs, reçoit leurs actus
+// ----------------------------------------------------------------------------
+
+model ConsumerProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  firstName  String?
+  lastName   String?
+  phone      String?
+  city       String? // "Lyon 4e (69004)" — sert aux suggestions
+  radius     String  @default("20 km") // 5 km | 20 km | 50 km | Toute la région
+  sundayMail Boolean @default(true) // récap des actus chaque dimanche matin
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Un compte (particulier OU acheteur pro) qui suit un producteur.
+model ProducerFollow {
+  id         String          @id @default(cuid())
+  userId     String
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  producerId String
+  producer   ProducerProfile @relation(fields: [producerId], references: [id], onDelete: Cascade)
+  notify     Boolean         @default(true) // inclus dans le mail du dimanche
+  createdAt  DateTime        @default(now())
+
+  @@unique([userId, producerId])
+  @@index([producerId])
+}
+
+enum PostKind {
+  TEXT // simple actu
+  PHOTO
+  PRODUCT // arrivage / nouveau produit
+  EVENT // portes ouvertes, marché…
+  RESTAURANT // « à la carte chez »
+}
+
+// Actu publiée par un producteur, destinée aux pros (BtoB), aux particuliers
+// (BtoC), ou aux deux — avec, si besoin, un texte différent pour les pros.
+model ProducerPost {
+  id         String          @id @default(cuid())
+  producerId String
+  producer   ProducerProfile @relation(fields: [producerId], references: [id], onDelete: Cascade)
+
+  kind     PostKind @default(TEXT)
+  title    String
+  body     String   @default("") // texte grand public (ou unique)
+  bodyPro  String? // texte spécifique pour les pros (sinon on montre `body`)
+  imageUrl String?
+
+  forPros   Boolean @default(true) // visible des restaurateurs / revendeurs
+  forPublic Boolean @default(true) // visible des particuliers
+
+  // Champs selon le type
+  eventDate       DateTime?
+  eventTime       String? // "10 h – 18 h"
+  eventPlace      String?
+  productName     String?
+  productNote     String?
+  restaurantName  String?
+  restaurantPlace String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([producerId, createdAt])
+  @@index([createdAt])
 }
 
 // ----------------------------------------------------------------------------
@@ -304,7 +383,7 @@ model Product {
   producerId String
   producer   ProducerProfile @relation(fields: [producerId], references: [id], onDelete: Cascade)
 
-  slug        String  @unique
+  slug        String   @unique
   name        String
   detail      String? // origine, durée d'affinage, % — une ligne (vitrine)
   formats     String? // "33 cl · 75 cl · fût 20 L"
@@ -315,21 +394,21 @@ model Product {
   retailPrice Decimal? @db.Decimal(10, 2) // prix de vente conseillé grand public (BtoC), indicatif
   vatRate     Decimal  @default(5.5) @db.Decimal(4, 2)
 
-  minQuantity Int  @default(1) // minimum de commande pour ce produit
-  stock       Decimal @db.Decimal(10, 2) @default(0) // stock global (si stockMode = "global")
-  stockUnit   String? // libellé du stock global : "bouteilles", "kg", "caisses"…
-  stockMode   String  @default("global") // "global" (un seul nombre) | "format" (par format de vente)
+  minQuantity       Int      @default(1) // minimum de commande pour ce produit
+  stock             Decimal  @default(0) @db.Decimal(10, 2) // stock global (si stockMode = "global")
+  stockUnit         String? // libellé du stock global : "bouteilles", "kg", "caisses"…
+  stockMode         String   @default("global") // "global" (un seul nombre) | "format" (par format de vente)
   lowStockThreshold Decimal? @db.Decimal(10, 2)
-  trackStock  Boolean @default(true)
+  trackStock        Boolean  @default(true)
 
   // Formats de vente : [{ id, label, size, sizeUnit, pricePro, priceRetail, unitPrice, stock }]
   // "tout en formats" : au moins un format ; basePrice/retailPrice sont synchronisés sur le 1er.
   salesFormats Json?
 
-  seasonality String?
+  seasonality    String?
   certifications String?
-  photoUrl    String?
-  isActive    Boolean @default(true)
+  photoUrl       String?
+  isActive       Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -403,8 +482,8 @@ enum DeliveryMode {
 // Une commande = un acheteur ↔ un producteur. Le "panier" multi-producteurs
 // du restaurant se traduit par plusieurs Order créées ensemble (même checkout).
 model Order {
-  id         String @id @default(cuid())
-  reference  String @unique // numéro lisible : MP-2026-000123
+  id        String @id @default(cuid())
+  reference String @unique // numéro lisible : MP-2026-000123
 
   buyerId    String
   buyer      BuyerProfile    @relation(fields: [buyerId], references: [id])
@@ -414,7 +493,7 @@ model Order {
   status        OrderStatus   @default(PENDING)
   paymentStatus PaymentStatus @default(UNPAID)
 
-  deliveryMode      DeliveryMode    @default(DELIVERY)
+  deliveryMode      DeliveryMode     @default(DELIVERY)
   deliveryAddressId String?
   deliveryAddress   DeliveryAddress? @relation(fields: [deliveryAddressId], references: [id])
   requestedDate     DateTime?
@@ -430,7 +509,7 @@ model Order {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  items     OrderItem[]
+  items      OrderItem[]
   tourStopId String?
   tourStop   DeliveryTourStop? @relation(fields: [tourStopId], references: [id])
 }
@@ -464,13 +543,13 @@ enum TourStatus {
 
 // Une tournée regroupe plusieurs producteurs d'une même zone pour une date.
 model DeliveryTour {
-  id        String     @id @default(cuid())
-  date      DateTime
-  region    String
-  status    TourStatus @default(PLANNED)
+  id               String     @id @default(cuid())
+  date             DateTime
+  region           String
+  status           TourStatus @default(PLANNED)
   driverProducerId String? // le producteur qui conduit ce jour-là (optionnel)
-  notes     String?
-  createdAt DateTime   @default(now())
+  notes            String?
+  createdAt        DateTime   @default(now())
 
   stops DeliveryTourStop[]
 }
@@ -496,16 +575,16 @@ model DeliveryTourStop {
 // Un message envoyé depuis le formulaire /contact (pas d'email pour l'instant,
 // juste un enregistrement en base — à relire depuis Supabase ou un futur écran admin).
 model ContactMessage {
-  id         String   @id @default(cuid())
-  name       String
-  structure  String?
-  email      String
-  phone      String?
-  profile    String // "producteur" | "restaurateur" | "autre"
-  subject    String // "commande" | "livraison" | "rejoindre" | "facturation" | "autre"
-  message    String
-  consent    Boolean  @default(false)
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  name      String
+  structure String?
+  email     String
+  phone     String?
+  profile   String // "producteur" | "restaurateur" | "autre"
+  subject   String // "commande" | "livraison" | "rejoindre" | "facturation" | "autre"
+  message   String
+  consent   Boolean  @default(false)
+  createdAt DateTime @default(now())
 }
 
 // ----------------------------------------------------------------------------
@@ -564,18 +643,18 @@ model Article {
 // donc pas de champs SEO ni de corps de texte — juste ce qui s'affiche vraiment.
 // La durée affichée (« 42 min », « 42:10 ») se calcule à partir de `seconds`.
 model Episode {
-  id      String        @id @default(cuid())
-  slug    String        @unique
-  num     String
-  title   String
-  excerpt String        @default("")
-  topic   String
-  guest   String
-  role    String        @default("")
-  initials String       @default("")
-  img     String        @default("")
-  seconds Int           @default(0)
-  status  ContentStatus @default(DRAFT)
+  id          String        @id @default(cuid())
+  slug        String        @unique
+  num         String
+  title       String
+  excerpt     String        @default("")
+  topic       String
+  guest       String
+  role        String        @default("")
+  initials    String        @default("")
+  img         String        @default("")
+  seconds     Int           @default(0)
+  status      ContentStatus @default(DRAFT)
   publishedAt DateTime?
   scheduledAt DateTime?
 

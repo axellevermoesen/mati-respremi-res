@@ -12,6 +12,7 @@ const ITEMS: NavItem[] = [
   { label: "Commandes", href: "/compte/commandes", icon: "box", match: "/compte/commandes" },
   { label: "Mes produits", href: "/compte/produits", icon: "leaf", match: "/compte/produits" },
   { label: "Ma page", href: "/compte/ma-page", icon: "store", match: "/compte/ma-page" },
+  { label: "Mes actus", href: "/compte/actus", icon: "news", match: "/compte/actus" },
   {
     label: "Tournée mutualisée",
     href: "/compte/tournees",
@@ -69,6 +70,14 @@ function NavIcon({ name }: { name: string }) {
           <path d="m2 7 2-4h16l2 4" />
           <path d="M4 7v13h16V7" />
           <path d="M9 20v-6h6v6" />
+        </svg>
+      );
+    case "news":
+      return (
+        <svg {...c}>
+          <path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1Z" />
+          <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+          <path d="M18.5 5.5a9 9 0 0 1 0 13" />
         </svg>
       );
     case "truck":

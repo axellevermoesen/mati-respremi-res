@@ -30,6 +30,10 @@ export const BREVO_LISTS = {
   get acheteurs() {
     return listId("BREVO_LIST_ACHETEURS");
   },
+  /** Facultative : sans elle, les particuliers sont seulement créés comme contacts. */
+  get particuliers() {
+    return listId("BREVO_LIST_PARTICULIERS");
+  },
   get valides() {
     return listId("BREVO_LIST_COMPTES_VALIDES");
   },
