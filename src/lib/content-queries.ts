@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { withRetry } from "@/lib/db";
+import { resolveHome } from "@/lib/home-content";
 
 /** Un contenu est visible s'il est en ligne, ou programmé et que la date est passée. */
 function visibleWhere() {
@@ -25,4 +26,12 @@ export async function getVisibleEpisodes() {
   return withRetry(() =>
     prisma.episode.findMany({ where: visibleWhere(), orderBy: { publishedAt: "desc" } }),
   );
+}
+
+/** Contenu de la page d'accueil (valeurs par défaut si rien n'est enregistré). */
+export async function getHomeContent() {
+  const row = await withRetry(() =>
+    prisma.siteContent.findUnique({ where: { key: "home" } }),
+  ).catch(() => null);
+  return resolveHome(row?.data);
 }

@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 /**
  * Client Supabase côté serveur avec la clé service_role.
  * À n'utiliser QUE dans des server actions / route handlers — jamais exposé au client.
- * (Le fichier n'est importé que par `src/lib/actions/upload.ts`, qui est "use server".)
+ * (Importé uniquement par des fichiers "use server" : actions/upload.ts, actions/admin-home.ts.)
  */
 export const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,

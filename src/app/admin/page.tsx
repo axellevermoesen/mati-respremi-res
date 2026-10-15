@@ -54,7 +54,14 @@ export default async function AdminDashboardPage() {
           className="flex items-center justify-between rounded-[var(--radius-l)] bg-[var(--surface-card)] p-6 shadow-[var(--shadow-m)] hover:shadow-[var(--shadow-l)]"
         >
           <div className="font-display text-[18px] text-[var(--text-primary)]">Comptes</div>
-          <div className="text-[14px] text-[var(--text-muted)]">Producteurs, restaurateurs, revendeurs</div>
+          <div className="text-[14px] text-[var(--text-muted)]">Producteurs, restaurateurs, revendeurs, particuliers</div>
+        </Link>
+        <Link
+          href="/admin/accueil"
+          className="flex items-center justify-between rounded-[var(--radius-l)] bg-[var(--surface-card)] p-6 shadow-[var(--shadow-m)] hover:shadow-[var(--shadow-l)]"
+        >
+          <div className="font-display text-[18px] text-[var(--text-primary)]">Page d&apos;accueil</div>
+          <div className="text-[14px] text-[var(--text-muted)]">Textes, images, producteur à la une</div>
         </Link>
         {rows.map((r) => (
           <Link

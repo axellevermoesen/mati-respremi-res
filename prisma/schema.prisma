@@ -661,3 +661,11 @@ model Episode {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+// Contenus éditables du site gérés depuis l'admin (une ligne par écran).
+// key = "home" pour la page d'accueil ; data = textes, images, sections visibles.
+model SiteContent {
+  key       String   @id
+  data      Json
+  updatedAt DateTime @updatedAt
+}
